@@ -3,6 +3,9 @@
 `openstack-cni` is a [CNI](https://github.com/containernetworking/cni) plugin designed to allow OpenStack Neutron ports to be used directory by Pod containers.
 
 
+The [sequence diagrams](docs/diagrams.md) show the workflow and relationship between `kubelet`, `multus`, `openstack-cni` and `openstack-cni-daemon`.
+
+
 # Requirements
 
 `multus-cni` is a pre-requisite. Instructions for installing `multus-cni` can be found [Here](https://github.com/k8snetworkplumbingwg/multus-cni/blob/master/README.md)
