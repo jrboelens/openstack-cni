@@ -42,6 +42,27 @@ stringData:
   OS_PASSWORD: SECRETPASSWORD
 ```
 
+### Environment Variables
+Runtime:
+* `OS_PROJECT_NAME` - required
+
+* `CNI_API_URL` - optionally the url `openstack-cni` will used to contact `openstack-cni-daemon`.  Also overrides `openstack-cni-daemon`'s listen address (`http://127.0.0.1:4242`)
+* `CNI_CONFIG_FILE` - optionally override the configuration `openstack-cni` reads (`/etc/cni/net.d/openstack-cni.conf`)
+* `CNI_REQUEST_TIMEOUT` - optionally `openstack-cni`'s request timeout in seconds (`60`)
+* `OS_REGION_NAME` - optionally override the region ('RegionOne')
+* `CNI_STATE_DIR` - optionally override the state directory ('/host/etc/cni/net.d/openstack-cni-state`)
+
+Testing:
+The following vars control the test that interact directly with the OpenStack APIs
+* `OS_TESTS` - `0` = skip OpenStack tests `1` = perform OpenStack tests
+* `OS_PROJECT_NAME` - required when `OS_TESTS=1`
+* `OS_NETWORK_NAME` - required when `OS_TESTS=1`
+* `OS_SECURITY_GROUPS` - required when `OS_TESTS=1`
+* `OS_SUBNET_NAME` - required when `OS_TESTS=1`
+* `OS_PORT_NAME` - optionally override the port name
+* `OS_VM_NAME` - optionally tell the OpenStack tests to use a hostname other than `os.Hostname()`
+
+
 For local testing, configuration and secrets can be loaded from `config.conf` or `secrets.conf`.
 
 ## CNI spec
