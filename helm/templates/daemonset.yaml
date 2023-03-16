@@ -1,0 +1,48 @@
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: openstack-cni
+  namespace: {{ .Values.cni.namespace }}
+  labels:
+    app: openstack-cni
+spec:
+  selector:
+    matchLabels:
+      name: openstack-cni
+  template:
+    metadata:
+      labels:
+        name: openstack-cni
+    spec:
+      tolerations:
+        - operator: Exists
+          effect: NoSchedule
+      hostNetwork: true
+      containers:
+      - name: openstack-cni
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: Always
+        resources:
+          limits:
+            memory: 200Mi
+          requests:
+            cpu: 100m
+            memory: 200Mi
+        envFrom:
+          - configMapRef:
+              name: openstack-cni-config
+          - secretRef:
+              name: openstack-cni-secret
+        volumeMounts:
+        - mountPath: /host/opt/cni/bin
+          name: cnibin
+        - mountPath: /host/etc/cni
+          name: cnietc
+      volumes:
+      - hostPath:
+          path: /opt/cni/bin
+        name: cnibin
+      - hostPath:
+          path: /etc/cni
+        name: cnietc

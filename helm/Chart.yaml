@@ -1,0 +1,12 @@
+apiVersion: v2
+name: openstack-cni
+description: A Helm chart for openstack-cni
+home: https://github.com/jrboelens/openstack-cni
+
+maintainers:
+  - name: Jared Boelens
+    email: jrboelens@gmail.com
+
+type: application
+version: 0.0.1
+appVersion: "0.1.0"
