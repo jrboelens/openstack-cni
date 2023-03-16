@@ -90,15 +90,24 @@ func WithTempDir(t *testing.T, callback func(dir string)) {
 	callback(baseDir)
 }
 
-func WithCniState(t *testing.T, callback func(state cnistate.State)) {
+func WithStateDir(t *testing.T, callback func(dir string)) {
 	t.Helper()
 	WithTempDir(t, func(dir string) {
 		// make sure our state dir can be overridden
 		os.Setenv("CNI_STATE_DIR", dir)
 		defer func() { os.Unsetenv("CNI_STATE_DIR") }()
-		stateDir := cnistate.GetStateBaseDir()
-		Assert(t).That(stateDir, Equals(dir))
-		callback(cnistate.NewState(stateDir))
+		callback(dir)
+	})
+}
+
+func WithCniState(t *testing.T, callback func(state cnistate.State)) {
+	t.Helper()
+	WithTempDir(t, func(dir string) {
+		WithStateDir(t, func(dir string) {
+			stateDir := cnistate.GetStateBaseDir()
+			Assert(t).That(stateDir, Equals(dir))
+			callback(cnistate.NewState(stateDir))
+		})
 	})
 }
 
