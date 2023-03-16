@@ -1,0 +1,29 @@
+image:
+  repository: REPOSITORY/DIRECTORY/openstack-cni
+  tag: 0.0.1
+
+cni:
+  cni_api_url: http://127.0.0.1:4242
+  namespace: NAMESPACE
+
+openstack:
+  auth_url: https://keystone.example.com:5000/v3
+  username: mycloud-user
+  project_name: mycloud-project
+  domain_name: default
+
+net_attach_def:
+  - namespace: PODNAMESPACE
+    name: network1
+    network: mycloud-network1
+    project_name: mycloud
+    subnet_name: mycloud-network1-subnet
+    security_groups:
+      - default
+  - namespace: PODNAMESPACE
+    name: network2
+    network: mycloud-network2
+    project_name: mycloud
+    subnet_name: mycloud-network2-subnet
+    security_groups:
+      - default

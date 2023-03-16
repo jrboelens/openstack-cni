@@ -1,0 +1,27 @@
+{{ range $nad := .Values.net_attach_def }}
+---
+apiVersion: k8s.cni.cncf.io/v1
+kind: NetworkAttachmentDefinition
+metadata:
+  name: {{ $nad.name }}
+  namespace: {{ $nad.namespace }}
+spec:
+  config: '{
+        "cniVersion": "0.3.1",
+        "type": "openstack-cni",
+        "name": "{{ $nad.name }}",
+        "network": "{{ $nad.network}}",
+        {{ if $nad.project_name -}}
+        "project_name": "{{ $nad.project_name }}",
+        {{ end -}}
+        {{ if $nad.subnet_name -}}
+        "subnet_name": "{{ $nad.subnet_name }}",
+        {{ end -}}
+        {{ if $nad.security_groups -}}
+        "security_groups": {{ $nad.security_groups | toJson }},
+        {{ end -}}
+        {{ if $nad.ipam -}}
+        "ipam": {{ $nad.ipam | toJson }}
+        {{ end -}}
+        }'
+{{ end }}

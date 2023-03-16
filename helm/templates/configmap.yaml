@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: openstack-cni-config
+  namespace: {{ .Values.cni.namespace }}
+data:
+  OS_AUTH_URL: {{ .Values.openstack.auth_url }}
+  OS_USERNAME: {{ .Values.openstack.username }}
+  OS_PROJECT_NAME: {{ .Values.openstack.project_name }}
+  OS_DOMAIN_NAME: {{ .Values.openstack.domain_name | default "default" }}
+  CNI_API_URL: {{ .Values.cni.cni_api_url | default "http://127.0.0.1:4242" }}
