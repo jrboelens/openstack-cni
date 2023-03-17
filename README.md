@@ -3,36 +3,14 @@
 `openstack-cni` is a [CNI](https://github.com/containernetworking/cni) plugin designed to allow OpenStack Neutron ports to be used directory by Pod containers.
 
 
-The [sequence diagrams](docs/diagrams.md) show the workflow and relationship between `kubelet`, `multus`, `openstack-cni` and `openstack-cni-daemon`.
+These [sequence diagrams](docs/diagrams.md) show the workflow and relationship between `kubelet`, `multus`, `openstack-cni` and `openstack-cni-daemon`.
 
+# Installation
 
-# Requirements
+* Ensure that [multus-cni](https://github.com/k8snetworkplumbingwg/multus-cni/blob/master/README.md) is installed
+* Add the required secret.
 
-`multus-cni` is a pre-requisite. Instructions for installing `multus-cni` can be found [Here](https://github.com/k8snetworkplumbingwg/multus-cni/blob/master/README.md)
-
-
-# Configuration
-
-`openstack-cni-daemon` configuration and secrets are injected into the environment via a volume mounted ConfigMap and Secret.
-
-### Example ConfigMap
-
-```
-apiVersion: v1
-kind: ConfigMap
-metadata:
-  name: openstack-cni-config
-  namespace: mynamespace
-data:
-  OS_AUTH_URL: https://keystone.mycloud.com:5000/v3
-  OS_USERNAME: mycloud-user
-  OS_PROJECT_NAME: mycloud-project
-  OS_DOMAIN_NAME: default
-  CNI_API_URL: http://127.0.0.1:4242
-```
-
-### Example Secret
-
+For example:
 ```
 ---
 apiVersion: v1
@@ -44,31 +22,23 @@ type: Opaque
 stringData:
   OS_PASSWORD: SECRETPASSWORD
 ```
+* Create a helm values file ([example](helm/example-values.yaml))
+* Run helm (`helm upgrade openstack-cni helm/ --install`)
+* Create a pod with the proper annotations.
 
-### Environment Variables
-Runtime:
-* `OS_PROJECT_NAME` - required
+For example:
+```
+apiVersion: v1
+kind: Pod
+metadata:
+  annotations:
+    k8s.v1.cni.cncf.io/networks: '[{"name": "mycloud-network1", "interface": "ens37"},{"name": "mycloud-network2", "interface": "ens42"}]'
+  name: dummypod
+  namespace: mynamespace
+...
+```
 
-* `CNI_API_URL` - optionally the url `openstack-cni` will used to contact `openstack-cni-daemon`.  Also overrides `openstack-cni-daemon`'s listen address (`http://127.0.0.1:4242`)
-* `CNI_CONFIG_FILE` - optionally override the configuration `openstack-cni` reads (`/etc/cni/net.d/openstack-cni.conf`)
-* `CNI_REQUEST_TIMEOUT` - optionally `openstack-cni`'s request timeout in seconds (`60`)
-* `OS_REGION_NAME` - optionally override the region ('RegionOne')
-* `CNI_STATE_DIR` - optionally override the state directory ('/host/etc/cni/net.d/openstack-cni-state`)
-
-Testing:
-The following vars control the test that interact directly with the OpenStack APIs
-* `OS_TESTS` - `0` = skip OpenStack tests `1` = perform OpenStack tests
-* `OS_PROJECT_NAME` - required when `OS_TESTS=1`
-* `OS_NETWORK_NAME` - required when `OS_TESTS=1`
-* `OS_SECURITY_GROUPS` - required when `OS_TESTS=1`
-* `OS_SUBNET_NAME` - required when `OS_TESTS=1`
-* `OS_PORT_NAME` - optionally override the port name
-* `OS_VM_NAME` - optionally tell the OpenStack tests to use a hostname other than `os.Hostname()`
-
-
-For local testing, configuration and secrets can be loaded from `config.conf` or `secrets.conf`.
-
-## CNI spec
+# CNI spec
 
 The `spec.config` portion of the `NetworkAttachmentDefinition` should contain the following configuration:
 
@@ -94,12 +64,13 @@ spec:
         }'
 ```
 
-
 # Testing
 
-In order to run the openstack related tests valid credentials must be provided.
+In order to run the full test suite valid OpenStack credentials must be present in the environment.
 
-The tests require an extra config file named `testing.conf`
+`testing.conf` will be sourced if present.
+
+The following enviroment variables an be used to control the tests.
 
 ```
 OS_TESTS="1" ## 0 = skip openstack tests 1 = execute openstack tests
@@ -112,8 +83,6 @@ OS_SUBNET_NAME="myproject-subnet"
 OS_SECURITY_GROUPS="default;project_default"
 ```
 
-Running `make test` will run all of the tests.
-
 # HTTP Server End points
 
 * `GET /health` - returns the health of the server including whether OpenStack authentication is working
@@ -122,3 +91,26 @@ Running `make test` will run all of the tests.
 * `DELETE /state/{containerId}/{ifname}` - deletes the state for a container/interface tuple
 * `POST /state` - sets the state for a container/interface tuple
 * `POST /cni` - handles `ADD/DEL/CHECK` CNI commands
+
+# Environment Variables
+### Runtime:
+* `OS_PROJECT_NAME` - required
+
+* `CNI_API_URL` - optionally the url `openstack-cni` will used to contact `openstack-cni-daemon`.  Also overrides `openstack-cni-daemon`'s listen address (`http://127.0.0.1:4242`)
+* `CNI_CONFIG_FILE` - optionally override the configuration `openstack-cni` reads (`/etc/cni/net.d/openstack-cni.conf`)
+* `CNI_REQUEST_TIMEOUT` - optionally `openstack-cni`'s request timeout in seconds (`60`)
+* `OS_REGION_NAME` - optionally override the region ('RegionOne')
+* `CNI_STATE_DIR` - optionally override the state directory ('/host/etc/cni/net.d/openstack-cni-state`)
+
+### Testing:
+The following vars control the test that interact directly with the OpenStack APIs
+* `OS_TESTS` - `0` = skip OpenStack tests `1` = perform OpenStack tests
+* `OS_PROJECT_NAME` - required when `OS_TESTS=1`
+* `OS_NETWORK_NAME` - required when `OS_TESTS=1`
+* `OS_SECURITY_GROUPS` - required when `OS_TESTS=1`
+* `OS_SUBNET_NAME` - required when `OS_TESTS=1`
+* `OS_PORT_NAME` - optionally override the port name
+* `OS_VM_NAME` - optionally tell the OpenStack tests to use a hostname other than `os.Hostname()`
+
+
+For local testing, configuration and secrets can be loaded from `config.conf` or `secrets.conf`.

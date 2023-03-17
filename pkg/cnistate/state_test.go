@@ -12,7 +12,7 @@ import (
 func TestState(t *testing.T) {
 	data := fixtures.NewTestData()
 
-	t.Run("can write and read a state file", func(t *testing.T) {
+	t.Run("can write, read and delete a state file", func(t *testing.T) {
 		fixtures.WithCniState(t, func(state cnistate.State) {
 			info := data.IfaceInfo()
 
@@ -21,6 +21,12 @@ func TestState(t *testing.T) {
 			newInfo, err := state.Get(info.ContainerId, info.Ifname)
 			Assert(t).That(err, IsNil())
 			Assert(t).That(newInfo.IpAddress, Equals(info.IpAddress))
+
+			Assert(t).That(state.Delete(info.ContainerId, info.Ifname), IsNil())
+
+			newInfo, err = state.Get(info.ContainerId, info.Ifname)
+			Assert(t).That(err, IsNil())
+			Assert(t).That(newInfo, IsNil())
 		})
 	})
 

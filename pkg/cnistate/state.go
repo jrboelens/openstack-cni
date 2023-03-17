@@ -85,7 +85,6 @@ type IfaceInfo struct {
 	IpAddress   string `json:"ip_address,omitempty"`
 	PodName     string `json:"pod_name,omitempty"`
 	Namespace   string `json:"namespace,omitempty"`
-	CniResult   any    `json:"CniResult,omitempty"`
 }
 
 func GetStateBaseDir() string {

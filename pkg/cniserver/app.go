@@ -21,7 +21,7 @@ type App struct {
 func SetupRoutes(deps *Deps) http.Handler {
 	router := chi.NewRouter()
 	router.Use(middleware.Logger)
-	router.Get("/health", (&HealthHandler{deps.OpenstackClient()}).HandleRequest)
+	router.Get("/health", (NewHealthHandler(deps.OpenstackClient())).HandleRequest)
 	router.Get("/ping", PingHandler)
 	router.Post("/cni", (&CniHandler{deps.CniHandler()}).HandleRequest)
 

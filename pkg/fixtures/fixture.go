@@ -175,3 +175,14 @@ func (me *ServerFixture) GetAvailablePort(addrs ...string) int {
 	}
 	return 0
 }
+
+func CniContextFromConfig(t *testing.T, cfg TestingConfig, cmd util.CniCommand) util.CniContext {
+	context, err := util.NewCniContext(cmd)
+	Assert(t).That(err, IsNil())
+	context.Hostname = cfg.Hostname
+	context.CniConfig.Network = cfg.NetworkName
+	context.CniConfig.PortName = cfg.PortName
+	context.CniConfig.ProjectName = cfg.ProjectName
+	context.CniConfig.SecurityGroups = cfg.SecurityGroups
+	return context
+}

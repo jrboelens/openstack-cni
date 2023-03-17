@@ -97,7 +97,7 @@ func NewCniConfig(bytes []byte) (CniConfig, error) {
 		return *conf, fmt.Errorf("Failed to load config data, error = %+v", err)
 	}
 	if conf.PortName == "" {
-		conf.PortName = "openstack-cni"
+		conf.PortName = Getenv("OS_PORT_NAME", "openstack-cni")
 	}
 	if conf.ProjectName == "" {
 		conf.ProjectName = Getenv("OS_PROJECT_NAME", "")
