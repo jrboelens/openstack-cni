@@ -2,6 +2,7 @@ package cniplugin
 
 import (
 	"fmt"
+	"net"
 
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
@@ -98,7 +99,7 @@ func (me *Cni) Invoke() error {
 func (me *Cni) ConfigureInterface(cmd util.CniCommand, result *currentcni.Result) error {
 
 	mac := result.Interfaces[0].Mac
-	ifaceName, err := util.GetIfaceNameByMac(mac)
+	ifaceName, err := GetIfaceNameByMac(mac)
 	if err != nil {
 		return err
 	}
@@ -141,4 +142,19 @@ func CniCommandFromSkelArgs(cmdStr string, args *skel.CmdArgs) util.CniCommand {
 		Path:        args.Path,
 		StdinData:   args.StdinData,
 	}
+}
+
+func GetIfaceNameByMac(mac string) (string, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return "", err
+	}
+
+	for _, iface := range ifaces {
+		if iface.HardwareAddr.String() == mac {
+			return iface.Name, nil
+		}
+	}
+
+	return "", fmt.Errorf("failed to find interface for %s", mac)
 }

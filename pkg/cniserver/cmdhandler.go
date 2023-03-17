@@ -118,7 +118,7 @@ func CreateResultFromPortResult(portResult *openstack.SetupPortResult, cmd util.
 	// add host routes
 	for _, route := range portResult.Subnet.HostRoutes {
 		result.Routes = append(result.Routes, &types.Route{
-			Dst: util.IpnetFromIp(route.DestinationCIDR),
+			Dst: IpnetFromCidr(route.DestinationCIDR),
 			GW:  net.ParseIP(route.NextHop),
 		})
 	}
@@ -133,4 +133,12 @@ func GetIPFromPortResult(portResult *openstack.SetupPortResult) (*net.IPNet, err
 		return nil, err
 	}
 	return &net.IPNet{IP: ip, Mask: cidr.Mask}, nil
+}
+
+func IpnetFromCidr(ip string) net.IPNet {
+	theip, cidr, err := net.ParseCIDR(ip)
+	if err != nil {
+		panic(err)
+	}
+	return net.IPNet{IP: theip, Mask: cidr.Mask}
 }

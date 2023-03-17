@@ -14,7 +14,7 @@ import (
 func Test_PortManager(t *testing.T) {
 	WithTestConfig(t, func(cfg TestingConfig) {
 		cmd := util.CniCommand{StdinData: []byte("{}")}
-		context := getContext(t, cfg, cmd)
+		context := CniContextFromConfig(t, cfg, cmd)
 
 		realClient, err := openstack.NewOpenstackClient()
 		Assert(t).That(err, IsNil())
@@ -32,20 +32,10 @@ func Test_PortManager(t *testing.T) {
 	})
 }
 
-func getContext(t *testing.T, cfg TestingConfig, cmd util.CniCommand) util.CniContext {
-	context, err := util.NewCniContext(cmd)
-	Assert(t).That(err, IsNil())
-	context.Hostname = cfg.Hostname
-	context.CniConfig.Network = cfg.NetworkName
-	context.CniConfig.PortName = cfg.PortName
-	context.CniConfig.ProjectName = cfg.ProjectName
-	context.CniConfig.SecurityGroups = cfg.SecurityGroups
-	return context
-}
-
 func SetupAndTeardownPort(t *testing.T, context util.CniContext, client openstack.OpenstackClient) {
 	pm := openstack.NewPortManager(client)
 	opts := openstack.SetupPortOptsFromContext(context)
+
 	results, err := pm.SetupPort(opts)
 	Assert(t).That(err, IsNil(), "failed to setup port")
 	ipAddress := results.Attachment.FixedIPs[0].IPAddress
