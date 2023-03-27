@@ -11,7 +11,6 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
-	"github.com/gophercloud/gophercloud/pagination"
 	"github.com/jboelensns/openstack-cni/pkg/util"
 )
 
@@ -67,53 +66,42 @@ var ErrServerNotFound = fmt.Errorf("server not found")
 
 // GetServer returns a single server based on a server name
 func (me *openstackClient) GetServerByName(name string) (*servers.Server, error) {
-	var server *servers.Server
-	opts := servers.ListOpts{Name: regexName(name), Limit: 1}
-	pager := servers.List(me.clients.ComputeClient, opts)
+	listOpts := servers.ListOpts{Name: regexName(name), Limit: 1}
+	allPages, err := servers.List(me.clients.ComputeClient, listOpts).AllPages()
+	if err != nil {
+		return nil, err
+	}
 
-	err := pager.EachPage(func(page pagination.Page) (bool, error) {
-		list, err := servers.ExtractServers(page)
-		if err != nil {
-			return false, err
-		}
+	allServers, err := servers.ExtractServers(allPages)
+	if err != nil {
+		return nil, err
+	}
 
-		for _, item := range list {
-			server = &item
-			return false, nil
-		}
-		return true, nil
-	})
-	if server == nil {
+	if len(allServers) == 0 {
 		return nil, ErrServerNotFound
 	}
-	return server, err
+	return &allServers[0], nil
 }
 
 var ErrNetworkNotFound = fmt.Errorf("network not found")
 
 // GetServer returns a single network based on a network name
 func (me *openstackClient) GetNetworkByName(name string) (*networks.Network, error) {
-	var network *networks.Network
+	listOpts := networks.ListOpts{Name: name, Limit: 1}
+	allPages, err := networks.List(me.clients.NetworkClient, listOpts).AllPages()
+	if err != nil {
+		return nil, err
+	}
 
-	opts := networks.ListOpts{Name: name}
-	pager := networks.List(me.clients.NetworkClient, opts)
+	allNetworks, err := networks.ExtractNetworks(allPages)
+	if err != nil {
+		return nil, err
+	}
 
-	err := pager.EachPage(func(page pagination.Page) (bool, error) {
-		networkList, err := networks.ExtractNetworks(page)
-		if err != nil {
-			return false, err
-		}
-
-		for _, n := range networkList {
-			network = &n
-			return false, nil
-		}
-		return true, nil
-	})
-	if network == nil {
+	if len(allNetworks) == 0 {
 		return nil, ErrNetworkNotFound
 	}
-	return network, err
+	return &allNetworks[0], nil
 }
 
 // GetPort returns a single port based on an ID
@@ -126,27 +114,21 @@ var ErrPortNotFound = fmt.Errorf("port not found")
 
 // GetPort returns a single port based on an IpAddress
 func (me *openstackClient) GetPortByIp(ip string) (*ports.Port, error) {
-	var port *ports.Port
+	listOpts := ports.ListOpts{FixedIPs: []ports.FixedIPOpts{{IPAddress: ip}}}
+	allPages, err := ports.List(me.clients.NetworkClient, listOpts).AllPages()
+	if err != nil {
+		return nil, err
+	}
 
-	opts := ports.ListOpts{FixedIPs: []ports.FixedIPOpts{{IPAddress: ip}}}
-	pager := ports.List(me.clients.NetworkClient, opts)
+	allPorts, err := ports.ExtractPorts(allPages)
+	if err != nil {
+		return nil, err
+	}
 
-	err := pager.EachPage(func(page pagination.Page) (bool, error) {
-		list, err := ports.ExtractPorts(page)
-		if err != nil {
-			return false, err
-		}
-
-		for _, item := range list {
-			port = &item
-			return false, nil
-		}
-		return true, nil
-	})
-	if port == nil {
+	if len(allPorts) == 0 {
 		return nil, ErrPortNotFound
 	}
-	return port, err
+	return &allPorts[0], nil
 }
 
 var ErrProjectNotFound = fmt.Errorf("project not found")

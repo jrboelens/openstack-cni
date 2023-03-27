@@ -65,9 +65,16 @@ func (me CniCommand) String() string {
 		me.Command, me.ContainerID, me.Netns, me.IfName, me.Args, me.Path, me.StdinData)
 }
 
-func (me CniCommand) ForLog() []any {
-	return []any{"cmd", me.Command, "args", me.Args, "container", me.ContainerID,
-		"ifname", me.IfName, "netns", me.Netns, "path", me.Path, "stdindata", string(me.StdinData)}
+func (me CniCommand) ForLog() [][]string {
+	return [][]string{
+		{"cmd", me.Command},
+		{"args", me.Args},
+		{"container", me.ContainerID},
+		{"ifname", me.IfName},
+		{"netns", me.Netns},
+		{"path", me.Path},
+		{"stdindata", string(me.StdinData)},
+	}
 }
 
 // CniConfig represents the config section of the NetworkAttachmentDefinition

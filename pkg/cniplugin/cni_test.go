@@ -5,11 +5,13 @@ import (
 	"testing"
 
 	currentcni "github.com/containernetworking/cni/pkg/types/040"
+	"github.com/go-chi/httplog"
 	"github.com/jboelensns/openstack-cni/pkg/cniplugin"
 	"github.com/jboelensns/openstack-cni/pkg/cnistate"
 	"github.com/jboelensns/openstack-cni/pkg/fixtures"
 	. "github.com/jboelensns/openstack-cni/pkg/fixtures"
 	"github.com/jboelensns/openstack-cni/pkg/fixtures/mocks"
+	"github.com/jboelensns/openstack-cni/pkg/logging"
 	"github.com/jboelensns/openstack-cni/pkg/util"
 	. "github.com/pepinns/go-hamcrest"
 )
@@ -54,6 +56,7 @@ func Test_Cni(t *testing.T) {
 		})
 
 		t.Run("can execute a delete", func(t *testing.T) {
+			logging.SetupLogging("openstack-cni-daemon", httplog.DefaultOptions)
 			cniHandler := &mocks.CommandHandlerMock{}
 			networking := &mocks.NetworkingMock{}
 			sopts := &ServerOpts{CniHandler: cniHandler, Networking: networking, State: state}
