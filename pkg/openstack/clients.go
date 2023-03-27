@@ -24,6 +24,7 @@ func NewApiClients(opts gophercloud.AuthOptions) (*ApiClients, error) {
 		region = "RegionOne"
 	}
 
+	opts.AllowReauth = true
 	clients := &ApiClients{authOpts: opts}
 	var err error
 

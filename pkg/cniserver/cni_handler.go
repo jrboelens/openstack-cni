@@ -37,6 +37,7 @@ func (me *CniHandler) HandleCommand(w http.ResponseWriter, cmd util.CniCommand) 
 	case CommandAdd:
 		result, err := me.Cni.Add(cmd)
 		if err != nil {
+			AddStrings(Log().Error(), cmd.ForLog()).Err(err).Msg("failed to handle /cni ADD")
 			cerr := NewErrorResult(err, "error during ADD", fmt.Sprintf("command=%s", cmd))
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(cerr)
@@ -47,6 +48,7 @@ func (me *CniHandler) HandleCommand(w http.ResponseWriter, cmd util.CniCommand) 
 		return
 	case CommandDel:
 		if err := me.Cni.Del(cmd); err != nil {
+			AddStrings(Log().Error(), cmd.ForLog()).Err(err).Msg("failed to handle /cni DEL")
 			cerr := NewErrorResult(err, "error during DEL", fmt.Sprintf("containerid=%s ifname=%s", cmd.ContainerID, cmd.IfName))
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(cerr)
