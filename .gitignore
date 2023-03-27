@@ -15,7 +15,4 @@
 # vendor/
 bin/
 vendor/
-scripts/
-k8s/
-*.env
 *.conf
