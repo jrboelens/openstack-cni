@@ -23,7 +23,7 @@ type PortManager struct {
 
 // SetupPort creates a new port and assigns it to a server
 func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
-	log := Log().With().Str("action", "setup").Str("hostname", opts.Hostname).Str("network-name", opts.NetworkName).Str("project-name", opts.ProjectName).Str("port-name", opts.PortName).Logger()
+	log := Log().With().Str("command", "ADD").Str("hostname", opts.Hostname).Str("network-name", opts.NetworkName).Str("project-name", opts.ProjectName).Str("port-name", opts.PortName).Logger()
 	result := &SetupPortResult{}
 	var err error
 
@@ -137,7 +137,7 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 }
 
 func (me *PortManager) TeardownPort(opts TearDownPortOpts) error {
-	log := Log().With().Str("action", "teardown").Str("hostname", opts.Hostname).Str("ipaddress", opts.IpAddress).Logger()
+	log := Log().With().Str("command", "DEL").Str("hostname", opts.Hostname).Str("ipaddress", opts.IpAddress).Logger()
 
 	// lookup port by ip
 	log.Info().Msg("looking up port by ipaddress")

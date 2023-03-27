@@ -17,3 +17,12 @@ clean: ## remove binaries
 .PHONY: test
 test: ## run all tests
 	go test -v -shuffle=on ./...
+
+docker-build:
+	scripts/docker.sh build $(VALUES_FILE)
+
+docker-push:
+	scripts/docker.sh push $(VALUES_FILE)
+
+helm-install:
+	scripts/helm.sh $(VALUES_FILE)
