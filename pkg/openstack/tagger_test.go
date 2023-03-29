@@ -19,19 +19,13 @@ func Test_Tagger(t *testing.T) {
 			tagger := openstack.NewNeutronTagger(client.Clients().NetworkClient, openstack.Ports)
 			t.Run("can execute all tagging operations on a port", func(t *testing.T) {
 				WithPort(t, cfg, client, func(port *ports.Port) {
-					// delete all of the tags
-					Assert(t).That(tagger.DeleteAll(port.ID), IsNil())
-
-					// make sure they are gone
-					existingTags, err := tagger.GetAll(port.ID)
-					Assert(t).That(err, IsNil())
-					Assert(t).That(existingTags.Tags, HasLen(0))
+					purgeOldTags(t, tagger, port.ID)
 
 					// add some tags
 					Assert(t).That(tagger.SetAll(port.ID, tags), IsNil())
 
-					// make sure the were added
-					existingTags, err = tagger.GetAll(port.ID)
+					// make sure the tags were added
+					existingTags, err := tagger.GetAll(port.ID)
 					Assert(t).That(err, IsNil())
 					Assert(t).That(existingTags.Tags, AllOf(
 						HasLen(3),
@@ -40,8 +34,14 @@ func Test_Tagger(t *testing.T) {
 						Contains("zilla"),
 					))
 
-					// delete the tags again
-					Assert(t).That(tagger.DeleteAll(port.ID), IsNil())
+					// clean the tags up
+					purgeOldTags(t, tagger, port.ID)
+				})
+			})
+
+			t.Run("can execute all single tag operations on a port", func(t *testing.T) {
+				WithPort(t, cfg, client, func(port *ports.Port) {
+					purgeOldTags(t, tagger, port.ID)
 
 					// add a single tag
 					tag := "zilla"
@@ -61,8 +61,43 @@ func Test_Tagger(t *testing.T) {
 					Assert(t).That(exists, IsFalse())
 				})
 			})
+
+			t.Run("returns errors when operating on non-existent resources", func(t *testing.T) {
+				notFound := "Resource not found"
+
+				err := tagger.Create("badid", "badtag")
+				Assert(t).That(err, Not(IsNil()))
+				Assert(t).That(err.Error(), Contains(notFound))
+
+				err = tagger.Delete("badid", "badtag")
+				Assert(t).That(err, Not(IsNil()))
+				Assert(t).That(err.Error(), Contains(notFound))
+
+				err = tagger.DeleteAll("badid")
+				Assert(t).That(err, Not(IsNil()))
+				Assert(t).That(err.Error(), Contains(notFound))
+
+				err = tagger.SetAll("badid", tags)
+				Assert(t).That(err, Not(IsNil()))
+				Assert(t).That(err.Error(), Contains(notFound))
+
+				exists, err := tagger.Exists("badid", "badtag")
+				Assert(t).That(err, IsNil())
+				Assert(t).That(exists, IsFalse())
+			})
 		})
 	})
+}
+
+func purgeOldTags(t *testing.T, tagger *openstack.NeutronTagger, id string) {
+	t.Helper()
+	// delete all of the tags
+	Assert(t).That(tagger.DeleteAll(id), IsNil())
+
+	// make sure they are gone
+	existingTags, err := tagger.GetAll(id)
+	Assert(t).That(err, IsNil())
+	Assert(t).That(existingTags.Tags, HasLen(0))
 }
 
 func WithPort(t *testing.T, cfg TestingConfig, client openstack.OpenstackClient, callback func(*ports.Port)) {

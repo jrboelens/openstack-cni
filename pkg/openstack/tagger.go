@@ -6,13 +6,6 @@ import (
 	"github.com/gophercloud/gophercloud"
 )
 
-// NeutronTagger provides the ability to manipulate tags on all Neutron resources
-// https://docs.openstack.org/neutron/latest/contributor/internals/tag.html
-type NeutronTagger struct {
-	networkClient *gophercloud.ServiceClient
-	resource_type NeutronResourceType
-}
-
 type NeutronResourceType uint64
 
 const (
@@ -55,6 +48,16 @@ func (me NeutronResourceType) String() string {
 		return "trunks"
 	}
 	return "unknown"
+}
+
+// NeutronTagger provides the ability to manipulate tags on all Neutron resources
+//
+// documentation for the Neutron API can be found here:
+//
+//	https://docs.openstack.org/neutron/latest/contributor/internals/tag.html
+type NeutronTagger struct {
+	networkClient *gophercloud.ServiceClient
+	resource_type NeutronResourceType
 }
 
 // NewNeutronTagger creates a new instance of a *NeutronTagger
