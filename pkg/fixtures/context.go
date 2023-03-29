@@ -100,6 +100,13 @@ func WithStateDir(t *testing.T, callback func(dir string)) {
 	})
 }
 
+func WithOpenstackClient(t *testing.T, callback func(client openstack.OpenstackClient)) {
+	t.Helper()
+	client, err := openstack.NewOpenstackClient()
+	Assert(t).That(err, IsNil())
+	callback(client)
+}
+
 func WithCniState(t *testing.T, callback func(state cnistate.State)) {
 	t.Helper()
 	WithTempDir(t, func(dir string) {

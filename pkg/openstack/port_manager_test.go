@@ -40,8 +40,9 @@ func SetupAndTeardownPort(t *testing.T, context util.CniContext, client openstac
 	Assert(t).That(err, IsNil(), "failed to setup port")
 	ipAddress := results.Attachment.FixedIPs[0].IPAddress
 
-	_, err = client.GetPortByIp(ipAddress)
+	port, err := client.GetPortByIp(ipAddress)
 	Assert(t).That(err, IsNil(), "failed get port by ip %s", ipAddress)
+	Assert(t).That(port.ValueSpecs, HasField("foo", Equals("bar")))
 
 	err = pm.TeardownPort(openstack.TearDownPortOptsFromContext(context.Hostname, ipAddress))
 	Assert(t).That(err, IsNil(), "failed teardown port")
