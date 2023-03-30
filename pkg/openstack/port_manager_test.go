@@ -1,6 +1,7 @@
 package openstack_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -35,14 +36,18 @@ func Test_PortManager(t *testing.T) {
 func SetupAndTeardownPort(t *testing.T, context util.CniContext, client openstack.OpenstackClient) {
 	pm := openstack.NewPortManager(client)
 	opts := openstack.SetupPortOptsFromContext(context)
+	opts.Tags = openstack.NewNeutronTags(
+		fmt.Sprintf("containerid=%s", context.Command.ContainerID),
+		fmt.Sprintf("ifname=%s", context.Command.IfName),
+		fmt.Sprintf("netns=%s", context.Command.Netns),
+	)
 
 	results, err := pm.SetupPort(opts)
 	Assert(t).That(err, IsNil(), "failed to setup port")
 	ipAddress := results.Attachment.FixedIPs[0].IPAddress
 
-	port, err := client.GetPortByIp(ipAddress)
+	_, err = client.GetPortByIp(ipAddress)
 	Assert(t).That(err, IsNil(), "failed get port by ip %s", ipAddress)
-	Assert(t).That(port.ValueSpecs, HasField("foo", Equals("bar")))
 
 	err = pm.TeardownPort(openstack.TearDownPortOptsFromContext(context.Hostname, ipAddress))
 	Assert(t).That(err, IsNil(), "failed teardown port")

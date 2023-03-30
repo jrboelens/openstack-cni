@@ -37,7 +37,13 @@ func (me *commandHandler) Add(cmd util.CniCommand) (*currentcni.Result, error) {
 		return nil, err
 	}
 
-	portResult, err := me.pm.SetupPort(openstack.SetupPortOptsFromContext(context))
+	opts := openstack.SetupPortOptsFromContext(context)
+	opts.Tags = openstack.NewNeutronTags(
+		fmt.Sprintf("containerid=%s", cmd.ContainerID),
+		fmt.Sprintf("ifname=%s", cmd.IfName),
+		fmt.Sprintf("netns=%s", cmd.Netns),
+	)
+	portResult, err := me.pm.SetupPort(opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup port %w", err)
 	}

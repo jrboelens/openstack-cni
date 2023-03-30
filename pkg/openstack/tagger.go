@@ -73,6 +73,16 @@ type NeutronTags struct {
 	Tags []NeutronTag `json:"tags"`
 }
 
+func NewNeutronTags(tag ...string) NeutronTags {
+	tags := NeutronTags{
+		Tags: make([]NeutronTag, len(tag), len(tag)),
+	}
+	for i := range tag {
+		tags.Tags[i] = NeutronTag(tag[i])
+	}
+	return tags
+}
+
 // Create creates a single tag for network resource
 func (me *NeutronTagger) Create(id, tag string) error {
 	responseBody := make(map[string]any)
