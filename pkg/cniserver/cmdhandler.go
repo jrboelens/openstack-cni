@@ -6,7 +6,6 @@ import (
 
 	"github.com/containernetworking/cni/pkg/types"
 	currentcni "github.com/containernetworking/cni/pkg/types/040"
-	"github.com/jboelensns/openstack-cni/pkg/cnistate"
 	. "github.com/jboelensns/openstack-cni/pkg/logging"
 	"github.com/jboelensns/openstack-cni/pkg/openstack"
 	"github.com/jboelensns/openstack-cni/pkg/util"
@@ -22,13 +21,12 @@ type CommandHandler interface {
 
 var _ CommandHandler = &commandHandler{}
 
-func NewCniCommandHandler(pm *openstack.PortManager, state cnistate.State) *commandHandler {
-	return &commandHandler{pm, state}
+func NewCniCommandHandler(pm *openstack.PortManager) *commandHandler {
+	return &commandHandler{pm}
 }
 
 type commandHandler struct {
-	pm    *openstack.PortManager
-	state cnistate.State
+	pm *openstack.PortManager
 }
 
 func (me *commandHandler) Add(cmd util.CniCommand) (*currentcni.Result, error) {
@@ -38,11 +36,7 @@ func (me *commandHandler) Add(cmd util.CniCommand) (*currentcni.Result, error) {
 	}
 
 	opts := openstack.SetupPortOptsFromContext(context)
-	opts.Tags = openstack.NewNeutronTags(
-		fmt.Sprintf("containerid=%s", cmd.ContainerID),
-		fmt.Sprintf("ifname=%s", cmd.IfName),
-		fmt.Sprintf("netns=%s", cmd.Netns),
-	)
+	opts.Tags = NeutronFromCmd(cmd)
 	portResult, err := me.pm.SetupPort(opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup port %w", err)
@@ -59,18 +53,10 @@ func (me *commandHandler) Del(cmd util.CniCommand) error {
 		return nil
 	}
 
-	info, err := me.state.Get(cmd.ContainerID, cmd.IfName)
-	if err != nil {
-		log.Error().AnErr("err", err).Msg("failed to get cni state")
-		return nil
-	}
-	if info == nil {
-		log.Info().Msg("state not found")
-		return nil
-	}
-
-	if err := me.pm.TeardownPort(openstack.TearDownPortOptsFromContext(context.Hostname, info.IpAddress)); err != nil {
-		log.Error().Str("hostname", context.Hostname).Str("ip", info.IpAddress).AnErr("err", err).Msg("failed to teardown port")
+	opts := openstack.TearDownPortOpts{Hostname: context.Hostname}
+	opts.Tags = NeutronFromCmd(cmd)
+	if err := me.pm.TeardownPort(opts); err != nil {
+		log.Error().Str("hostname", context.Hostname).Str("tags", opts.Tags.String()).AnErr("err", err).Msg("failed to teardown port")
 		return nil
 	}
 	return nil
@@ -147,4 +133,12 @@ func IpnetFromCidr(ip string) net.IPNet {
 		panic(err)
 	}
 	return net.IPNet{IP: theip, Mask: cidr.Mask}
+}
+
+func NeutronFromCmd(cmd util.CniCommand) openstack.NeutronTags {
+	return openstack.NewNeutronTags(
+		fmt.Sprintf("containerid=%s", cmd.ContainerID),
+		fmt.Sprintf("ifname=%s", cmd.IfName),
+		fmt.Sprintf("netns=%s", cmd.Netns),
+	)
 }

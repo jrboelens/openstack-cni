@@ -46,9 +46,9 @@ func (me *CachedClient) GetPort(portId string) (*ports.Port, error) {
 	})
 }
 
-func (me *CachedClient) GetPortByIp(ip string) (*ports.Port, error) {
-	return getValue[ports.Port](me.cash, makeKey("GetPortByIp", ip), me.Expiration, func() (any, error) {
-		return me.OpenstackClient.GetPortByIp(ip)
+func (me *CachedClient) GetPortByTags(tags []string) (*ports.Port, error) {
+	return getValue[ports.Port](me.cash, makeKey("GetPortByTags", strings.Join(tags, ",")), me.Expiration, func() (any, error) {
+		return me.OpenstackClient.GetPortByTags(tags)
 	})
 }
 

@@ -1,7 +1,9 @@
 package cniserver
 
 import (
+	"encoding/json"
 	"fmt"
+	"io"
 	"net/http"
 
 	"github.com/containernetworking/cni/pkg/types"
@@ -91,4 +93,21 @@ func asJson(i any) []byte {
 		panic(fmt.Sprintf("failed to json marshal bytes %#v", i))
 	}
 	return b
+}
+
+func readBodyIntoJson[T any](w http.ResponseWriter, r *http.Request) *T {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		Log().Error().Str("body", string(body)).AnErr("err", err).Msg("failed to read body")
+		w.WriteHeader(http.StatusBadRequest)
+		return nil
+	}
+
+	var t T
+	if err := json.Unmarshal(body, &t); err != nil {
+		Log().Error().Str("body", string(body)).AnErr("err", err).Msg("failed to unmarshal body")
+		w.WriteHeader(http.StatusBadRequest)
+		return nil
+	}
+	return &t
 }

@@ -147,18 +147,29 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 }
 
 func (me *PortManager) TeardownPort(opts TearDownPortOpts) error {
-	log := Log().With().Str("command", "DEL").Str("hostname", opts.Hostname).Str("ipaddress", opts.IpAddress).Logger()
+	log := Log().With().Str("command", "DEL").Str("hostname", opts.Hostname).Str("tags", opts.Tags.String()).Logger()
 
-	// lookup port by ip
-	log.Info().Msg("looking up port by ipaddress")
-	port, err := me.client.GetPortByIp(opts.IpAddress)
+	// lookup port by tags
+	log.Info().Msg("looking up port by tags")
+	port, err := me.client.GetPortByTags(opts.Tags.AsStringSlice())
 	if err != nil {
 		return err
 	}
 	if port == nil {
-		return fmt.Errorf("failed to find port by IP Address %s", opts.IpAddress)
+		return fmt.Errorf("failed to find port by tags %s", opts.Tags)
 	}
-	log.Info().Msg("found port by ipaddress")
+	log.Info().Msg("found port by tags")
+
+	// lookup port by ip
+	// log.Info().Msg("looking up port by ipaddress")
+	// port, err := me.client.GetPortByIp(opts.IpAddress)
+	// if err != nil {
+	// 	return err
+	// }
+	// if port == nil {
+	// 	return fmt.Errorf("failed to find port by IP Address %s", opts.IpAddress)
+	// }
+	// log.Info().Msg("found port by ipaddress")
 
 	if !opts.SkipPortDetach {
 		// look up the server
@@ -211,16 +222,9 @@ func SetupPortOptsFromContext(context util.CniContext) SetupPortOpts {
 }
 
 type TearDownPortOpts struct {
-	IpAddress      string
 	Hostname       string
+	Tags           NeutronTags
 	SkipPortDetach bool
-}
-
-func TearDownPortOptsFromContext(hostname, ipAddress string) TearDownPortOpts {
-	return TearDownPortOpts{
-		IpAddress: ipAddress,
-		Hostname:  hostname,
-	}
 }
 
 // SetupPortResult contains information gathered while setting up a port

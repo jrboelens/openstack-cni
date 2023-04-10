@@ -9,9 +9,6 @@ import (
 	"github.com/containernetworking/cni/pkg/types"
 	currentcni "github.com/containernetworking/cni/pkg/types/040"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
-	"github.com/jboelensns/openstack-cni/pkg/cniclient"
-	"github.com/jboelensns/openstack-cni/pkg/cnistate"
-	"github.com/jboelensns/openstack-cni/pkg/fixtures"
 	. "github.com/jboelensns/openstack-cni/pkg/fixtures"
 	"github.com/jboelensns/openstack-cni/pkg/fixtures/mocks"
 	"github.com/jboelensns/openstack-cni/pkg/openstack"
@@ -127,93 +124,6 @@ func Test_Health(t *testing.T) {
 					Assert(t).That(check.Error, Not(Equals("")))
 				}
 			}
-		})
-	})
-}
-
-func Test_State(t *testing.T) {
-	t.Run("GET /state: 200 when state is found", func(t *testing.T) {
-		ifaceInfo := fixtures.NewTestData().IfaceInfo()
-		state := &mocks.StateMock{}
-		state.GetFunc = func(containerId, ifname string) (*cnistate.IfaceInfo, error) {
-			return ifaceInfo, nil
-		}
-
-		opts := &ServerOpts{State: state}
-		WithServerOpts(t, opts, func(fix *ServerFixture) {
-			result, err := fix.CniClient().GetState(ifaceInfo.ContainerId, ifaceInfo.Ifname)
-
-			Assert(t).That(err, IsNil())
-			Assert(t).That(result, Equals(ifaceInfo))
-		})
-	})
-
-	t.Run("GET /state: 404 when state doesn't exist", func(t *testing.T) {
-		ifaceInfo := fixtures.NewTestData().IfaceInfo()
-		state := &mocks.StateMock{}
-		state.GetFunc = func(containerId, ifname string) (*cnistate.IfaceInfo, error) {
-			return nil, nil
-		}
-
-		opts := &ServerOpts{State: state}
-		WithServerOpts(t, opts, func(fix *ServerFixture) {
-			url := fmt.Sprintf("%s/%s/%s", fix.Url("/state"), ifaceInfo.ContainerId, ifaceInfo.Ifname)
-			resp, err := fix.Client().Get(url, nil)
-
-			Assert(t).That(err, IsNil())
-			Assert(t).That(resp.StatusCode, Equals(http.StatusNotFound))
-		})
-	})
-
-	t.Run("DELETE /state: 204 when state does exist", func(t *testing.T) {
-		ifaceInfo := fixtures.NewTestData().IfaceInfo()
-		state := &mocks.StateMock{}
-		state.GetFunc = func(containerId, ifname string) (*cnistate.IfaceInfo, error) {
-			return ifaceInfo, nil
-		}
-		state.DeleteFunc = func(containerId, ifname string) error { return nil }
-
-		opts := &ServerOpts{State: state}
-		WithServerOpts(t, opts, func(fix *ServerFixture) {
-			err := fix.CniClient().DeleteState(ifaceInfo.ContainerId, ifaceInfo.Ifname)
-			Assert(t).That(err, IsNil())
-		})
-	})
-
-	t.Run("DELETE /state: 404 when state doesn't exist", func(t *testing.T) {
-		state := &mocks.StateMock{}
-		state.GetFunc = func(containerId, ifname string) (*cnistate.IfaceInfo, error) {
-			return nil, nil
-		}
-
-		opts := &ServerOpts{State: state}
-		WithServerOpts(t, opts, func(fix *ServerFixture) {
-			err := fix.CniClient().DeleteState("foo", "bar")
-			Assert(t).That(err, Equals(cniclient.ErrStateNotFound))
-		})
-	})
-
-	t.Run("POST /state: 204 on success", func(t *testing.T) {
-		ifaceInfo := fixtures.NewTestData().IfaceInfo()
-		state := &mocks.StateMock{}
-		state.SetFunc = func(ifaceInfo *cnistate.IfaceInfo) error { return nil }
-
-		opts := &ServerOpts{State: state}
-		WithServerOpts(t, opts, func(fix *ServerFixture) {
-			err := fix.CniClient().SetState(ifaceInfo)
-			Assert(t).That(err, IsNil())
-		})
-	})
-
-	t.Run("POST /state: 500 on failure", func(t *testing.T) {
-		ifaceInfo := fixtures.NewTestData().IfaceInfo()
-		state := &mocks.StateMock{}
-		state.SetFunc = func(ifaceInfo *cnistate.IfaceInfo) error { return errors.New("BOOM") }
-
-		opts := &ServerOpts{State: state}
-		WithServerOpts(t, opts, func(fix *ServerFixture) {
-			err := fix.CniClient().SetState(ifaceInfo)
-			Assert(t).That(err, Contains("500"))
 		})
 	})
 }

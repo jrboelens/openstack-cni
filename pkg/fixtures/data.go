@@ -6,7 +6,6 @@ import (
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
 	currentcni "github.com/containernetworking/cni/pkg/types/040"
-	"github.com/jboelensns/openstack-cni/pkg/cnistate"
 	"github.com/jboelensns/openstack-cni/pkg/util"
 )
 
@@ -15,16 +14,6 @@ type TestData struct {
 
 func NewTestData() *TestData {
 	return &TestData{}
-}
-
-func (me *TestData) IfaceInfo() *cnistate.IfaceInfo {
-	return &cnistate.IfaceInfo{
-		ContainerId: "deadf7ed",
-		Ifname:      "ens7",
-		IpAddress:   "1.2.3.4",
-		PodName:     "dummypod",
-		Namespace:   "/proc/387869/ns/net",
-	}
 }
 
 func (me *TestData) SkelArgs() *skel.CmdArgs {

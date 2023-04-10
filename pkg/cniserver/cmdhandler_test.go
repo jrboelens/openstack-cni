@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/jboelensns/openstack-cni/pkg/cniserver"
-	"github.com/jboelensns/openstack-cni/pkg/cnistate"
 	. "github.com/jboelensns/openstack-cni/pkg/fixtures"
 	"github.com/jboelensns/openstack-cni/pkg/openstack"
 	"github.com/jboelensns/openstack-cni/pkg/util"
@@ -25,37 +24,26 @@ func Test_CreateResultFromPortResult(t *testing.T) {
 
 func Test_CmdHandler(t *testing.T) {
 	t.Run("can add and delete using a handler", func(t *testing.T) {
-		WithCniState(t, func(state cnistate.State) {
-			WithTestConfig(t, func(cfg TestingConfig) {
-				deps, err := cniserver.NewBuilder().WithState(state).Build()
-				Assert(t).That(err, IsNil())
+		WithTestConfig(t, func(cfg TestingConfig) {
+			deps, err := cniserver.NewBuilder().Build()
+			Assert(t).That(err, IsNil())
 
-				cmd := NewTestData().CniCommand()
-				results, err := deps.CniHandler().Add(cmd)
-				Assert(t).That(err, IsNil())
-				Assert(t).That(results, Not(IsNil()))
+			cmd := NewTestData().CniCommand()
+			results, err := deps.CniHandler().Add(cmd)
+			Assert(t).That(err, IsNil())
+			Assert(t).That(results, Not(IsNil()))
 
-				state.Set(&cnistate.IfaceInfo{
-					ContainerId: cmd.ContainerID,
-					Ifname:      cmd.IfName,
-					Netns:       cmd.Netns,
-					IpAddress:   results.IPs[0].Address.IP.String(),
-					PodName:     "POD",
-					Namespace:   "NAMESPACE",
-				})
+			// ensure the port exists
+			port, err := deps.OpenstackClient().GetPortByTags(cniserver.NeutronFromCmd(cmd).AsStringSlice())
+			Assert(t).That(err, IsNil())
+			Assert(t).That(port, Not(IsNil()))
 
-				// ensure the port exists
-				port, err := deps.OpenstackClient().GetPortByIp(results.IPs[0].Address.IP.String())
-				Assert(t).That(err, IsNil())
-				Assert(t).That(port, Not(IsNil()))
+			// issue a delete
+			Assert(t).That(deps.CniHandler().Del(cmd), IsNil())
 
-				// issue a delete
-				Assert(t).That(deps.CniHandler().Del(cmd), IsNil())
-
-				// ensure the port's gone
-				port, perr := deps.OpenstackClient().GetPortByIp(results.IPs[0].Address.IP.String())
-				Assert(t).That(perr, Equals(openstack.ErrPortNotFound))
-			})
+			// ensure the port's gone
+			port, perr := deps.OpenstackClient().GetPortByTags(cniserver.NeutronFromCmd(cmd).AsStringSlice())
+			Assert(t).That(perr, Equals(openstack.ErrPortNotFound))
 		})
 	})
 }

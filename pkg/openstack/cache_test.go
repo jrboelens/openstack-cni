@@ -69,20 +69,20 @@ func Test_Cache(t *testing.T) {
 		})
 	})
 
-	t.Run("GetPortByIp is cached", func(t *testing.T) {
+	t.Run("GetPortByTags is cached", func(t *testing.T) {
 		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
-			ip := "1.2.3.4"
+			tags := []string{"foo=bar", "this=that"}
 			mock.GetPortByIpFunc = func(ip string) (*ports.Port, error) {
 				return &ports.Port{
-					FixedIPs: []ports.IP{{SubnetID: "ID", IPAddress: ip}},
+					Tags: tags,
 				}, nil
 			}
 
 			Assert(t).That(mock.GetPortByIpCalls(), HasLen(0))
 			invoke := func(calls int) {
-				port, err := client.GetPortByIp(ip)
+				port, err := client.GetPortByTags(tags)
 				Assert(t).That(err, IsNil())
-				Assert(t).That(port.FixedIPs[0].IPAddress, Equals(ip))
+				Assert(t).That(port.Tags, Equals(tags))
 				Assert(t).That(mock.GetPortByIpCalls(), HasLen(calls))
 			}
 

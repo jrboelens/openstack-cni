@@ -83,6 +83,18 @@ func NewNeutronTags(tag ...string) NeutronTags {
 	return tags
 }
 
+func (me NeutronTags) AsStringSlice() []string {
+	tags := make([]string, len(me.Tags), len(me.Tags))
+	for i := range me.Tags {
+		tags[i] = string(me.Tags[i])
+	}
+	return tags
+}
+
+func (me NeutronTags) String() string {
+	return strings.Join(me.AsStringSlice(), ",")
+}
+
 // Create creates a single tag for network resource
 func (me *NeutronTagger) Create(id, tag string) error {
 	responseBody := make(map[string]any)

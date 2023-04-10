@@ -2,6 +2,7 @@ package openstack
 
 import (
 	"fmt"
+	"strings"
 
 	gc_os "github.com/gophercloud/gophercloud/openstack"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/attachinterfaces"
@@ -24,7 +25,8 @@ type OpenstackClient interface {
 	DetachPort(portId, serverId string) error
 	GetNetworkByName(name string) (*networks.Network, error)
 	GetPort(portId string) (*ports.Port, error)
-	GetPortByIp(ip string) (*ports.Port, error)
+	// GetPortByIp(ip string) (*ports.Port, error)
+	GetPortByTags(tags []string) (*ports.Port, error)
 	GetProjectByName(name string) (*projects.Project, error)
 	GetServerByName(name string) (*servers.Server, error)
 	GetSecurityGroupByName(name, projectId string) (*groups.SecGroup, error)
@@ -112,9 +114,20 @@ func (me *openstackClient) GetPort(portId string) (*ports.Port, error) {
 
 var ErrPortNotFound = fmt.Errorf("port not found")
 
-// GetPort returns a single port based on an IpAddress
+// GetPortByIp returns a single port based on an IpAddress
 func (me *openstackClient) GetPortByIp(ip string) (*ports.Port, error) {
 	listOpts := ports.ListOpts{FixedIPs: []ports.FixedIPOpts{{IPAddress: ip}}}
+	return me.getPort(listOpts)
+}
+
+// GetPortByTags returns a single port based on matching tags
+func (me *openstackClient) GetPortByTags(tags []string) (*ports.Port, error) {
+	tagsStr := strings.Join(tags, ",")
+	listOpts := ports.ListOpts{Tags: tagsStr}
+	return me.getPort(listOpts)
+}
+
+func (me *openstackClient) getPort(listOpts ports.ListOpts) (*ports.Port, error) {
 	allPages, err := ports.List(me.clients.NetworkClient, listOpts).AllPages()
 	if err != nil {
 		return nil, err

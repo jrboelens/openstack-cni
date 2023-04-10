@@ -25,11 +25,6 @@ func SetupRoutes(deps *Deps) http.Handler {
 	router.Get("/ping", PingHandler)
 	router.Post("/cni", (&CniHandler{deps.CniHandler()}).HandleRequest)
 
-	// state
-	stateHandler := &StateHandler{deps.State()}
-	router.Get("/state/{containerId}/{ifname}", stateHandler.Get)
-	router.Delete("/state/{containerId}/{ifname}", stateHandler.Delete)
-	router.Post("/state", stateHandler.Set)
 	return router
 }
 

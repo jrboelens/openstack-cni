@@ -3,7 +3,6 @@ package cniclient
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -11,7 +10,6 @@ import (
 	"time"
 
 	"github.com/containernetworking/cni/pkg/types"
-	"github.com/jboelensns/openstack-cni/pkg/cnistate"
 	"github.com/jboelensns/openstack-cni/pkg/util"
 	"github.com/joho/godotenv"
 )
@@ -48,52 +46,6 @@ type Client struct {
 
 func (me *Client) Url(path string) string {
 	return fmt.Sprintf("%s%s", me.Opts.BaseUrl, path)
-}
-
-func (me *Client) GetState(containerId, ifname string) (*cnistate.IfaceInfo, error) {
-	url := fmt.Sprintf("%s/%s/%s", me.Url("/state"), containerId, ifname)
-
-	body, err := me.HandleResponse(me.Get(url))
-	if err != nil {
-		return nil, err
-	}
-
-	var info cnistate.IfaceInfo
-	if err := util.FromJson(body, &info); err != nil {
-		return nil, err
-	}
-	return &info, nil
-}
-
-func (me *Client) SetState(info *cnistate.IfaceInfo) error {
-	url := me.Url("/state")
-
-	b, err := util.ToJson(info)
-	if err != nil {
-		return err
-	}
-
-	resp, err := me.Post(url, b)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode == http.StatusNoContent {
-		return nil
-	}
-
-	return fmt.Errorf("http error code=%d", resp.StatusCode)
-}
-
-var ErrStateNotFound = errors.New("state not found")
-
-func (me *Client) DeleteState(containerId, ifname string) error {
-	url := fmt.Sprintf("%s/%s/%s", me.Url("/state"), containerId, ifname)
-
-	resp, err := me.Delete(url)
-	if resp.StatusCode == http.StatusNotFound {
-		return ErrStateNotFound
-	}
-	return err
 }
 
 func (me *Client) CniCommand(cmd util.CniCommand) (*http.Response, error) {

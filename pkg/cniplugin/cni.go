@@ -9,7 +9,6 @@ import (
 	currentcni "github.com/containernetworking/cni/pkg/types/040"
 	cniversion "github.com/containernetworking/cni/pkg/version"
 	"github.com/jboelensns/openstack-cni/pkg/cniclient"
-	"github.com/jboelensns/openstack-cni/pkg/cnistate"
 	"github.com/jboelensns/openstack-cni/pkg/logging"
 	"github.com/jboelensns/openstack-cni/pkg/util"
 )
@@ -63,13 +62,7 @@ func (me *Cni) Check(args *skel.CmdArgs) error {
 
 func (me *Cni) Del(args *skel.CmdArgs) error {
 	cmd := CniCommandFromSkelArgs("DEL", args)
-	if _, err := me.client.HandleResponse(me.client.CniCommand(cmd)); err != nil {
-		return err
-	}
-	err := me.client.DeleteState(cmd.ContainerID, cmd.IfName)
-	if err == cniclient.ErrStateNotFound {
-		return nil
-	}
+	_, err := me.client.HandleResponse(me.client.CniCommand(cmd))
 	return err
 }
 
@@ -114,22 +107,7 @@ func (me *Cni) ConfigureInterface(cmd util.CniCommand, result *currentcni.Result
 	if err != nil {
 		return fmt.Errorf("failed to configure interface %w", err)
 	}
-
-	context, err := util.NewCniContext(cmd)
-	if err != nil {
-		return err
-	}
-
-	info := &cnistate.IfaceInfo{
-		ContainerId: cmd.ContainerID,
-		Ifname:      iface.DestName,
-		Netns:       cmd.Netns,
-		IpAddress:   iface.Address.IP.String(),
-		PodName:     context.GetArg("K8S_POD_NAME"),
-		Namespace:   context.GetArg("K8S_POD_NAMESPACE"),
-	}
-
-	return me.client.SetState(info)
+	return err
 }
 
 func CniCommandFromSkelArgs(cmdStr string, args *skel.CmdArgs) util.CniCommand {

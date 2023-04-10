@@ -17,7 +17,6 @@ func Test_builder(t *testing.T) {
 				Assert(t).That(deps, Not(IsNil()))
 				Assert(t).That(deps.CniHandler(), Not(IsNil()))
 				Assert(t).That(deps.OpenstackClient(), Not(IsNil()))
-				Assert(t).That(deps.State(), Not(IsNil()))
 			})
 		})
 	})
