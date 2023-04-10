@@ -1,23 +1,23 @@
 package cniplugin
 
 import (
-	"fmt"
-	"net"
-
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
 	currentcni "github.com/containernetworking/cni/pkg/types/040"
 	cniversion "github.com/containernetworking/cni/pkg/version"
 	"github.com/jboelensns/openstack-cni/pkg/cniclient"
+	"github.com/jboelensns/openstack-cni/pkg/cniserver"
 	"github.com/jboelensns/openstack-cni/pkg/logging"
 	"github.com/jboelensns/openstack-cni/pkg/util"
 )
 
+// Cni provides methods with the ability accept CNI spec data, make requests to the openstack-cni-daemon and return the results
 type Cni struct {
 	client *cniclient.Client
 	nw     Networking
 }
 
+// NewCni returns a new Cni
 func NewCni(client *cniclient.Client, nw Networking) *Cni {
 	return &Cni{
 		client: client,
@@ -25,13 +25,14 @@ func NewCni(client *cniclient.Client, nw Networking) *Cni {
 	}
 }
 
+// Add handles ADD CNI commands
 func (me *Cni) Add(args *skel.CmdArgs) error {
 	var netConf types.NetConf
 	if err := util.FromJson(args.StdinData, &netConf); err != nil {
 		return err
 	}
 
-	cmd := CniCommandFromSkelArgs("ADD", args)
+	cmd := cniCommandFromSkelArgs(cniserver.CommandAdd, args)
 	body, err := me.client.HandleResponse(me.client.CniCommand(cmd))
 	if err != nil {
 		return err
@@ -54,18 +55,21 @@ func (me *Cni) Add(args *skel.CmdArgs) error {
 	return finalResult.Print()
 }
 
+// Check handles CHECK CNI commands
 func (me *Cni) Check(args *skel.CmdArgs) error {
-	cmd := CniCommandFromSkelArgs("CHECK", args)
+	cmd := cniCommandFromSkelArgs(cniserver.CommandCheck, args)
 	_, err := me.client.HandleResponse(me.client.CniCommand(cmd))
 	return err
 }
 
+// Del handles DEL CNI commands
 func (me *Cni) Del(args *skel.CmdArgs) error {
-	cmd := CniCommandFromSkelArgs("DEL", args)
+	cmd := cniCommandFromSkelArgs(cniserver.CommandDel, args)
 	_, err := me.client.HandleResponse(me.client.CniCommand(cmd))
 	return err
 }
 
+// Invoke invokes the CNI plugin skeletons using its own methods
 func (me *Cni) Invoke() error {
 	err := skel.PluginMainWithError(
 		func(args *skel.CmdArgs) error {
@@ -89,28 +93,7 @@ func (me *Cni) Invoke() error {
 	return nil
 }
 
-func (me *Cni) ConfigureInterface(cmd util.CniCommand, result *currentcni.Result) error {
-
-	mac := result.Interfaces[0].Mac
-	ifaceName, err := GetIfaceNameByMac(mac)
-	if err != nil {
-		return err
-	}
-
-	iface := &NetworkInterface{
-		Name:     ifaceName,
-		DestName: result.Interfaces[0].Name,
-		Address:  &result.IPs[0].Address,
-	}
-
-	err = me.nw.Configure(cmd.Netns, iface)
-	if err != nil {
-		return fmt.Errorf("failed to configure interface %w", err)
-	}
-	return err
-}
-
-func CniCommandFromSkelArgs(cmdStr string, args *skel.CmdArgs) util.CniCommand {
+func cniCommandFromSkelArgs(cmdStr string, args *skel.CmdArgs) util.CniCommand {
 	return util.CniCommand{
 		Command:     cmdStr,
 		ContainerID: args.ContainerID,
@@ -120,19 +103,4 @@ func CniCommandFromSkelArgs(cmdStr string, args *skel.CmdArgs) util.CniCommand {
 		Path:        args.Path,
 		StdinData:   args.StdinData,
 	}
-}
-
-func GetIfaceNameByMac(mac string) (string, error) {
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		return "", err
-	}
-
-	for _, iface := range ifaces {
-		if iface.HardwareAddr.String() == mac {
-			return iface.Name, nil
-		}
-	}
-
-	return "", fmt.Errorf("failed to find interface for %s", mac)
 }
