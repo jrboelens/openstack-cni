@@ -5,7 +5,6 @@ import (
 
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/subnets"
-	"github.com/jboelensns/openstack-cni/pkg/cniserver"
 	"github.com/jboelensns/openstack-cni/pkg/openstack"
 	"github.com/jboelensns/openstack-cni/pkg/util"
 
@@ -34,7 +33,7 @@ func Test_IpParsing(t *testing.T) {
 		}
 		address := "198.18.182.36/24"
 
-		ip, err := cniserver.GetIPFromPortResult(pr)
+		ip, err := pr.GetIp()
 		Assert(t).That(err, IsNil())
 		Assert(t).That(ip.String(), Equals(address))
 	})

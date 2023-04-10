@@ -15,17 +15,19 @@ var CommandAdd = "ADD"
 var CommandDel = "DEL"
 var CommandCheck = "CHECK"
 
+// CniHandler handles /cni related requests
 type CniHandler struct {
 	Cni CommandHandler
 }
 
+// HandleRequest validates and handlers /cni related requests
 func (me *CniHandler) HandleRequest(w http.ResponseWriter, r *http.Request) {
 	cmd := readBodyIntoJson[util.CniCommand](w, r)
 	if cmd == nil {
 		return
 	}
 
-	if err := me.validateRequest(*cmd); err != nil {
+	if err := me.validateCommand(*cmd); err != nil {
 		Log().Error().Str("cmd", cmd.String()).AnErr("err", err).Msg("failed to validate request")
 		w.WriteHeader(http.StatusBadRequest)
 		return
@@ -34,6 +36,7 @@ func (me *CniHandler) HandleRequest(w http.ResponseWriter, r *http.Request) {
 	me.HandleCommand(w, *cmd)
 }
 
+// HandleCommand handlers ADD/DEL/CHECK CNI command requests
 func (me *CniHandler) HandleCommand(w http.ResponseWriter, cmd util.CniCommand) {
 	switch cmd.Command {
 	case CommandAdd:
@@ -65,24 +68,26 @@ func (me *CniHandler) HandleCommand(w http.ResponseWriter, cmd util.CniCommand) 
 	w.WriteHeader(http.StatusBadRequest)
 }
 
-func (me *CniHandler) validateRequest(cmd util.CniCommand) error {
+// validateCommand ensures that a command is valid
+func (me *CniHandler) validateCommand(cmd util.CniCommand) error {
 	if cmd.Command == "" ||
 		cmd.ContainerID == "" ||
 		cmd.IfName == "" ||
 		len(cmd.StdinData) == 0 {
-		return ErrBadRequest
+		return ErrBadCommand
 	}
 
 	if cmd.Command == CommandAdd || cmd.Command == CommandCheck {
 		if cmd.Netns == "" {
-			return ErrBadRequest
+			return ErrBadCommand
 		}
 	}
 	return nil
 }
 
-var ErrBadRequest = fmt.Errorf("bad request")
+var ErrBadCommand = fmt.Errorf("bad command")
 
+// NewErrorResult creates a new error result and marshals it as json
 func NewErrorResult(err error, msg, details string) []byte {
 	return asJson(types.NewError(types.ErrInternal, msg, err.Error()))
 }

@@ -13,21 +13,13 @@ import (
 	. "github.com/jboelensns/openstack-cni/pkg/logging"
 )
 
+// App represents the application running the http server
 type App struct {
 	config Config
 	server *http.Server
 }
 
-func SetupRoutes(deps *Deps) http.Handler {
-	router := chi.NewRouter()
-	router.Use(middleware.Logger)
-	router.Get("/health", (NewHealthHandler(deps.OpenstackClient())).HandleRequest)
-	router.Get("/ping", PingHandler)
-	router.Post("/cni", (&CniHandler{deps.CniHandler()}).HandleRequest)
-
-	return router
-}
-
+// NewApp creates a new App from configuration
 func NewApp(config Config, mux http.Handler) (*App, error) {
 	return &App{
 		config: config,
@@ -40,6 +32,7 @@ func NewApp(config Config, mux http.Handler) (*App, error) {
 	}, nil
 }
 
+// Run starts the http server and blocks
 func (me *App) Run() error {
 	Log().Info().Str("addr", me.server.Addr).Msg("starting http server")
 	if err := me.server.ListenAndServe(); err != http.ErrServerClosed {
@@ -50,6 +43,7 @@ func (me *App) Run() error {
 	return nil
 }
 
+// Shutdown signals the http server to shutdown
 func (me *App) Shutdown(ctx context.Context) error {
 	Log().Info().Msg("shutting down server")
 	defer func() {
@@ -58,6 +52,7 @@ func (me *App) Shutdown(ctx context.Context) error {
 	return me.server.Shutdown(ctx)
 }
 
+// Run builds up the dependencies for the application, creates the application and runs it
 func Run() error {
 	SetupLogging("openstack-cni-daemon", httplog.DefaultOptions)
 	Log().Info().Msg("preparing http server")
@@ -77,6 +72,7 @@ func Run() error {
 	return app.Run()
 }
 
+// HandleSignals setups signal handling
 func (me *App) HandleSignals() {
 	go func() {
 		err := HandleSignals(context.Background(), me.Shutdown)
@@ -86,10 +82,23 @@ func (me *App) HandleSignals() {
 	}()
 }
 
+// SetupRoutes sets up the http routes to be handled by the application
+func SetupRoutes(deps *Deps) http.Handler {
+	router := chi.NewRouter()
+	router.Use(middleware.Logger)
+	router.Get("/health", (NewHealthHandler(deps.OpenstackClient())).HandleRequest)
+	router.Get("/ping", PingHandler)
+	router.Post("/cni", (&CniHandler{deps.CniHandler()}).HandleRequest)
+
+	return router
+}
+
+// PingHandler handles /ping requests
 func PingHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("PONG"))
 }
 
+// HandleSignals handlers SIGINT and SIGINT signals
 func HandleSignals(ctx context.Context, callbacks ...func(context.Context) error) error {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)

@@ -2,6 +2,7 @@ package openstack
 
 import (
 	"fmt"
+	"net"
 
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/attachinterfaces"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
@@ -234,4 +235,14 @@ type SetupPortResult struct {
 	Subnet     *subnets.Subnet
 	Port       *ports.Port
 	Attachment *attachinterfaces.Interface
+}
+
+// GetIp returns an IPNet created from teh first FixedIP
+func (me *SetupPortResult) GetIp() (*net.IPNet, error) {
+	ip := net.ParseIP(me.Port.FixedIPs[0].IPAddress)
+	_, cidr, err := net.ParseCIDR(me.Subnet.CIDR)
+	if err != nil {
+		return nil, err
+	}
+	return &net.IPNet{IP: ip, Mask: cidr.Mask}, nil
 }

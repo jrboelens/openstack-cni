@@ -13,14 +13,19 @@ import (
 
 //go:generate moq -pkg mocks -out ../fixtures/mocks/cniserver_mocks.go . CommandHandler
 
+// CommandHandler provides the ability to handle CNI commands
 type CommandHandler interface {
+	// Add handlers ADD commands
 	Add(cmd util.CniCommand) (*currentcni.Result, error)
+	// Check handlers DEL commands
 	Del(cmd util.CniCommand) error
+	// Check handlers CHECK commands (NOT IMPLEMENTED)
 	Check(cmd util.CniCommand) error
 }
 
 var _ CommandHandler = &commandHandler{}
 
+// NewCniCommandHandler creates a new CommandHandler
 func NewCniCommandHandler(pm *openstack.PortManager) *commandHandler {
 	return &commandHandler{pm}
 }
@@ -36,13 +41,13 @@ func (me *commandHandler) Add(cmd util.CniCommand) (*currentcni.Result, error) {
 	}
 
 	opts := openstack.SetupPortOptsFromContext(context)
-	opts.Tags = NeutronFromCmd(cmd)
+	opts.Tags = NewPortTags(cmd)
 	portResult, err := me.pm.SetupPort(opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup port %w", err)
 	}
 
-	return CreateResultFromPortResult(portResult, cmd)
+	return NewCniResult(portResult, cmd)
 }
 
 func (me *commandHandler) Del(cmd util.CniCommand) error {
@@ -53,8 +58,7 @@ func (me *commandHandler) Del(cmd util.CniCommand) error {
 		return nil
 	}
 
-	opts := openstack.TearDownPortOpts{Hostname: context.Hostname}
-	opts.Tags = NeutronFromCmd(cmd)
+	opts := openstack.TearDownPortOpts{Hostname: context.Hostname, Tags: NewPortTags(cmd)}
 	if err := me.pm.TeardownPort(opts); err != nil {
 		log.Error().Str("hostname", context.Hostname).Str("tags", opts.Tags.String()).AnErr("err", err).Msg("failed to teardown port")
 		return nil
@@ -68,14 +72,15 @@ func (me *commandHandler) Check(cmd util.CniCommand) error {
 
 var ErrIncompletePortResult = fmt.Errorf("Incomplete port result")
 
-func CreateResultFromPortResult(portResult *openstack.SetupPortResult, cmd util.CniCommand) (*currentcni.Result, error) {
+// NewCniResult creates a new Result from the combination of a SetupPortResult and CniCommand
+func NewCniResult(portResult *openstack.SetupPortResult, cmd util.CniCommand) (*currentcni.Result, error) {
 	if portResult.Attachment == nil || portResult.Network == nil ||
 		portResult.Port == nil || portResult.Subnet == nil {
 
 		return nil, ErrIncompletePortResult
 	}
 
-	ipnet, err := GetIPFromPortResult(portResult)
+	ipnet, err := portResult.GetIp()
 	if err != nil {
 		return nil, err
 	}
@@ -110,7 +115,7 @@ func CreateResultFromPortResult(portResult *openstack.SetupPortResult, cmd util.
 	// add host routes
 	for _, route := range portResult.Subnet.HostRoutes {
 		result.Routes = append(result.Routes, &types.Route{
-			Dst: IpnetFromCidr(route.DestinationCIDR),
+			Dst: NewIpNet(route.DestinationCIDR),
 			GW:  net.ParseIP(route.NextHop),
 		})
 	}
@@ -118,24 +123,17 @@ func CreateResultFromPortResult(portResult *openstack.SetupPortResult, cmd util.
 	return result, nil
 }
 
-func GetIPFromPortResult(portResult *openstack.SetupPortResult) (*net.IPNet, error) {
-	ip := net.ParseIP(portResult.Port.FixedIPs[0].IPAddress)
-	_, cidr, err := net.ParseCIDR(portResult.Subnet.CIDR)
-	if err != nil {
-		return nil, err
-	}
-	return &net.IPNet{IP: ip, Mask: cidr.Mask}, nil
-}
-
-func IpnetFromCidr(ip string) net.IPNet {
-	theip, cidr, err := net.ParseCIDR(ip)
+// NewIpNet creates a new IPNet from a string containing an IP and prefix (e.g. "10.1.2.3/24")
+func NewIpNet(cidr string) net.IPNet {
+	theip, ipnet, err := net.ParseCIDR(cidr)
 	if err != nil {
 		panic(err)
 	}
-	return net.IPNet{IP: theip, Mask: cidr.Mask}
+	return net.IPNet{IP: theip, Mask: ipnet.Mask}
 }
 
-func NeutronFromCmd(cmd util.CniCommand) openstack.NeutronTags {
+// NewPortTags creates a NeutronTags including container, interface and namespace data
+func NewPortTags(cmd util.CniCommand) openstack.NeutronTags {
 	return openstack.NewNeutronTags(
 		fmt.Sprintf("containerid=%s", cmd.ContainerID),
 		fmt.Sprintf("ifname=%s", cmd.IfName),

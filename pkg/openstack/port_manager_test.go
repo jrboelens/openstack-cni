@@ -36,7 +36,7 @@ func Test_PortManager(t *testing.T) {
 func SetupAndTeardownPort(t *testing.T, context util.CniContext, client openstack.OpenstackClient) {
 	pm := openstack.NewPortManager(client)
 	opts := openstack.SetupPortOptsFromContext(context)
-	opts.Tags = cniserver.NeutronFromCmd(context.Command)
+	opts.Tags = cniserver.NewPortTags(context.Command)
 
 	results, err := pm.SetupPort(opts)
 	Assert(t).That(err, IsNil(), "failed to setup port")
@@ -44,7 +44,7 @@ func SetupAndTeardownPort(t *testing.T, context util.CniContext, client openstac
 	_, err = client.GetPortByTags(opts.Tags.AsStringSlice())
 	Assert(t).That(err, IsNil(), "failed get port by tags %s", opts.Tags.String())
 
-	tdOpts := openstack.TearDownPortOpts{Hostname: context.Hostname, Tags: cniserver.NeutronFromCmd(context.Command)}
+	tdOpts := openstack.TearDownPortOpts{Hostname: context.Hostname, Tags: cniserver.NewPortTags(context.Command)}
 	err = pm.TeardownPort(tdOpts)
 	Assert(t).That(err, IsNil(), "failed teardown port")
 
@@ -59,7 +59,7 @@ func SetupAndTeardownPort(t *testing.T, context util.CniContext, client openstac
 	_, err = client.GetPortByTags(opts.Tags.AsStringSlice())
 	Assert(t).That(err, IsNil(), "failed get port by tags %s", opts.Tags.String())
 
-	tdOpts = openstack.TearDownPortOpts{Hostname: context.Hostname, Tags: cniserver.NeutronFromCmd(context.Command)}
+	tdOpts = openstack.TearDownPortOpts{Hostname: context.Hostname, Tags: cniserver.NewPortTags(context.Command)}
 	err = pm.TeardownPort(tdOpts)
 	Assert(t).That(err, IsNil(), "failed teardown port")
 

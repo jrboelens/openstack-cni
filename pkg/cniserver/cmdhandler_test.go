@@ -16,7 +16,7 @@ func Test_CreateResultFromPortResult(t *testing.T) {
 		portResult := &openstack.SetupPortResult{}
 		cmd := util.CniCommand{}
 
-		result, err := cniserver.CreateResultFromPortResult(portResult, cmd)
+		result, err := cniserver.NewCniResult(portResult, cmd)
 		Assert(t).That(result, IsNil())
 		Assert(t).That(err, Equals(cniserver.ErrIncompletePortResult))
 	})
@@ -34,7 +34,7 @@ func Test_CmdHandler(t *testing.T) {
 			Assert(t).That(results, Not(IsNil()))
 
 			// ensure the port exists
-			port, err := deps.OpenstackClient().GetPortByTags(cniserver.NeutronFromCmd(cmd).AsStringSlice())
+			port, err := deps.OpenstackClient().GetPortByTags(cniserver.NewPortTags(cmd).AsStringSlice())
 			Assert(t).That(err, IsNil())
 			Assert(t).That(port, Not(IsNil()))
 
@@ -42,7 +42,7 @@ func Test_CmdHandler(t *testing.T) {
 			Assert(t).That(deps.CniHandler().Del(cmd), IsNil())
 
 			// ensure the port's gone
-			port, perr := deps.OpenstackClient().GetPortByTags(cniserver.NeutronFromCmd(cmd).AsStringSlice())
+			port, perr := deps.OpenstackClient().GetPortByTags(cniserver.NewPortTags(cmd).AsStringSlice())
 			Assert(t).That(perr, Equals(openstack.ErrPortNotFound))
 		})
 	})
@@ -50,9 +50,8 @@ func Test_CmdHandler(t *testing.T) {
 
 func Test_IpNetFromCidr(t *testing.T) {
 	t.Run("can parse an IP with prefix and return a proper IPNet", func(t *testing.T) {
-		ipnet := cniserver.IpnetFromCidr("1.2.3.4/24")
+		ipnet := cniserver.NewIpNet("1.2.3.4/24")
 		Assert(t).That(ipnet.IP, Equals("1.2.3.4"))
 		Assert(t).That(ipnet.Mask, Equals("ffffff00"))
-
 	})
 }
