@@ -25,7 +25,6 @@ type OpenstackClient interface {
 	DetachPort(portId, serverId string) error
 	GetNetworkByName(name string) (*networks.Network, error)
 	GetPort(portId string) (*ports.Port, error)
-	// GetPortByIp(ip string) (*ports.Port, error)
 	GetPortByTags(tags []string) (*ports.Port, error)
 	GetProjectByName(name string) (*projects.Project, error)
 	GetServerByName(name string) (*servers.Server, error)
@@ -113,12 +112,6 @@ func (me *openstackClient) GetPort(portId string) (*ports.Port, error) {
 }
 
 var ErrPortNotFound = fmt.Errorf("port not found")
-
-// GetPortByIp returns a single port based on an IpAddress
-func (me *openstackClient) GetPortByIp(ip string) (*ports.Port, error) {
-	listOpts := ports.ListOpts{FixedIPs: []ports.FixedIPOpts{{IPAddress: ip}}}
-	return me.getPort(listOpts)
-}
 
 // GetPortByTags returns a single port based on matching tags
 func (me *openstackClient) GetPortByTags(tags []string) (*ports.Port, error) {

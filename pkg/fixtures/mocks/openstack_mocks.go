@@ -46,9 +46,6 @@ var _ openstack.OpenstackClient = &OpenstackClientMock{}
 //			GetPortFunc: func(portId string) (*ports.Port, error) {
 //				panic("mock out the GetPort method")
 //			},
-//			GetPortByIpFunc: func(ip string) (*ports.Port, error) {
-//				panic("mock out the GetPortByIp method")
-//			},
 //			GetPortByTagsFunc: func(tags []string) (*ports.Port, error) {
 //				panic("mock out the GetPortByTags method")
 //			},
@@ -94,9 +91,6 @@ type OpenstackClientMock struct {
 
 	// GetPortFunc mocks the GetPort method.
 	GetPortFunc func(portId string) (*ports.Port, error)
-
-	// GetPortByIpFunc mocks the GetPortByIp method.
-	GetPortByIpFunc func(ip string) (*ports.Port, error)
 
 	// GetPortByTagsFunc mocks the GetPortByTags method.
 	GetPortByTagsFunc func(tags []string) (*ports.Port, error)
@@ -155,11 +149,6 @@ type OpenstackClientMock struct {
 			// PortId is the portId argument value.
 			PortId string
 		}
-		// GetPortByIp holds details about calls to the GetPortByIp method.
-		GetPortByIp []struct {
-			// IP is the ip argument value.
-			IP string
-		}
 		// GetPortByTags holds details about calls to the GetPortByTags method.
 		GetPortByTags []struct {
 			// Tags is the tags argument value.
@@ -202,7 +191,6 @@ type OpenstackClientMock struct {
 	lockDetachPort             sync.RWMutex
 	lockGetNetworkByName       sync.RWMutex
 	lockGetPort                sync.RWMutex
-	lockGetPortByIp            sync.RWMutex
 	lockGetPortByTags          sync.RWMutex
 	lockGetProjectByName       sync.RWMutex
 	lockGetSecurityGroupByName sync.RWMutex
@@ -435,38 +423,6 @@ func (mock *OpenstackClientMock) GetPortCalls() []struct {
 	mock.lockGetPort.RLock()
 	calls = mock.calls.GetPort
 	mock.lockGetPort.RUnlock()
-	return calls
-}
-
-// GetPortByIp calls GetPortByIpFunc.
-func (mock *OpenstackClientMock) GetPortByIp(ip string) (*ports.Port, error) {
-	if mock.GetPortByIpFunc == nil {
-		panic("OpenstackClientMock.GetPortByIpFunc: method is nil but OpenstackClient.GetPortByIp was just called")
-	}
-	callInfo := struct {
-		IP string
-	}{
-		IP: ip,
-	}
-	mock.lockGetPortByIp.Lock()
-	mock.calls.GetPortByIp = append(mock.calls.GetPortByIp, callInfo)
-	mock.lockGetPortByIp.Unlock()
-	return mock.GetPortByIpFunc(ip)
-}
-
-// GetPortByIpCalls gets all the calls that were made to GetPortByIp.
-// Check the length with:
-//
-//	len(mockedOpenstackClient.GetPortByIpCalls())
-func (mock *OpenstackClientMock) GetPortByIpCalls() []struct {
-	IP string
-} {
-	var calls []struct {
-		IP string
-	}
-	mock.lockGetPortByIp.RLock()
-	calls = mock.calls.GetPortByIp
-	mock.lockGetPortByIp.RUnlock()
 	return calls
 }
 

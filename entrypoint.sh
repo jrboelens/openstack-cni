@@ -16,9 +16,6 @@ do
   fi
 done
 
-# Create the state directory
-mkdir -p "$HOST_CNI_ETC_DIR/openstack-cni-state"
-
 # Copy the CNI binary into place
 if cp -f "$CNI_BIN_FILE" "$HOST_CNI_BIN_DIR"; then
     echo "Openstack CNI installed Success!"
