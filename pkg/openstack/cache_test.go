@@ -1,6 +1,7 @@
 package openstack_test
 
 import (
+	"fmt"
 	"testing"
 	"time"
 
@@ -69,6 +70,29 @@ func Test_Cache(t *testing.T) {
 		})
 	})
 
+	t.Run("GetPortsByDeviceId is cached", func(t *testing.T) {
+		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
+			deviceId := "myId"
+			mock.GetPortsByDeviceIdFunc = func(deviceId string) ([]ports.Port, error) {
+				return []ports.Port{
+					{ID: deviceId},
+				}, nil
+			}
+
+			Assert(t).That(mock.GetPortsByDeviceIdCalls(), HasLen(0))
+			invoke := func(calls int) {
+				ports, err := client.GetPortsByDeviceId(deviceId)
+				Assert(t).That(err, IsNil())
+				Assert(t).That(ports, HasLen(1))
+				Assert(t).That(ports[0].ID, Equals(deviceId))
+				Assert(t).That(mock.GetPortsByDeviceIdCalls(), HasLen(calls))
+			}
+
+			invoke(1)
+			invoke(1)
+		})
+	})
+
 	t.Run("GetPortByTags is cached", func(t *testing.T) {
 		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
 			tags := []string{"foo=bar", "this=that"}
@@ -88,6 +112,25 @@ func Test_Cache(t *testing.T) {
 
 			invoke(1)
 			invoke(1)
+		})
+	})
+
+	t.Run("GetPortByTags doesn't cache errors", func(t *testing.T) {
+		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
+			tags := []string{"foo=bar", "this=that"}
+			mock.GetPortByTagsFunc = func(tags []string) (*ports.Port, error) {
+				return nil, fmt.Errorf("BOOM")
+			}
+
+			Assert(t).That(mock.GetPortByTagsCalls(), HasLen(0))
+			invoke := func(calls int) {
+				_, err := client.GetPortByTags(tags)
+				Assert(t).That(err, Not(IsNil()))
+				Assert(t).That(mock.GetPortByTagsCalls(), HasLen(calls))
+			}
+
+			invoke(1)
+			invoke(2)
 		})
 	})
 

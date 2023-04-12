@@ -1,6 +1,8 @@
 package cniserver
 
 import (
+	"time"
+
 	"github.com/jboelensns/openstack-cni/pkg/openstack"
 )
 
@@ -54,6 +56,7 @@ func (me *Builder) Build() (*Deps, error) {
 			return nil, err
 		}
 	}
+	me.osClient = openstack.NewCachedClient(me.osClient, time.Second*300)
 
 	// build the default cni handler if we don't have one
 	if me.cniHandler == nil {

@@ -19,12 +19,13 @@ import (
 
 type OpenstackClient interface {
 	AssignPort(portId, serverId string) (*attachinterfaces.Interface, error)
-	Clients() *ApiClients
 	CreatePort(opts ports.CreateOpts) (*ports.Port, error)
 	DeletePort(portId string) error
 	DetachPort(portId, serverId string) error
+	Clients() *ApiClients
 	GetNetworkByName(name string) (*networks.Network, error)
 	GetPort(portId string) (*ports.Port, error)
+	GetPortsByDeviceId(deviceId string) ([]ports.Port, error)
 	GetPortByTags(tags []string) (*ports.Port, error)
 	GetProjectByName(name string) (*projects.Project, error)
 	GetServerByName(name string) (*servers.Server, error)
@@ -59,9 +60,34 @@ func NewOpenstackClient() (*openstackClient, error) {
 	return &openstackClient{apiClients}, nil
 }
 
+// AssignPort attaches a port to a server
+func (me *openstackClient) AssignPort(portId, serverId string) (*attachinterfaces.Interface, error) {
+	opts := attachinterfaces.CreateOpts{PortID: portId}
+	result := attachinterfaces.Create(me.clients.ComputeClient, serverId, opts)
+	return result.Extract()
+}
+
 func (me *openstackClient) Clients() *ApiClients {
 	return me.clients
 }
+
+// CreatePort creates a neutron port inside of the specified network
+func (me *openstackClient) CreatePort(opts ports.CreateOpts) (*ports.Port, error) {
+	return ports.Create(me.clients.NetworkClient, opts).Extract()
+}
+
+// DeletePort deletes the port
+func (me *openstackClient) DeletePort(portId string) error {
+	result := ports.Delete(me.clients.NetworkClient, portId)
+	return result.ExtractErr()
+}
+
+// Detach port removes a port's relationship from a server
+func (me *openstackClient) DetachPort(portId, serverId string) error {
+	result := attachinterfaces.Delete(me.clients.ComputeClient, serverId, portId)
+	return result.ExtractErr()
+}
+
 
 var ErrServerNotFound = fmt.Errorf("server not found")
 
@@ -118,6 +144,17 @@ func (me *openstackClient) GetPortByTags(tags []string) (*ports.Port, error) {
 	tagsStr := strings.Join(tags, ",")
 	listOpts := ports.ListOpts{Tags: tagsStr}
 	return me.getPort(listOpts)
+}
+
+// GetPortsByDeviceId returns all ports based device id (server id)
+func (me *openstackClient) GetPortsByDeviceId(deviceId string) ([]ports.Port, error) {
+	listOpts := ports.ListOpts{DeviceID: deviceId}
+	allPages, err := ports.List(me.clients.NetworkClient, listOpts).AllPages()
+	if err != nil {
+		return nil, err
+	}
+
+	return ports.ExtractPorts(allPages)
 }
 
 func (me *openstackClient) getPort(listOpts ports.ListOpts) (*ports.Port, error) {
@@ -207,30 +244,6 @@ func (me *openstackClient) GetSubnetByName(name, networkId string) (*subnets.Sub
 		return nil, ErrSubnetNotFound
 	}
 	return &all[0], nil
-}
-
-// CreatePort creates a neutron port inside of the specified network
-func (me *openstackClient) CreatePort(opts ports.CreateOpts) (*ports.Port, error) {
-	return ports.Create(me.clients.NetworkClient, opts).Extract()
-}
-
-// AssignPort attaches a port to a server
-func (me *openstackClient) AssignPort(portId, serverId string) (*attachinterfaces.Interface, error) {
-	opts := attachinterfaces.CreateOpts{PortID: portId}
-	result := attachinterfaces.Create(me.clients.ComputeClient, serverId, opts)
-	return result.Extract()
-}
-
-// Detach port removes a port's relationship from a server
-func (me *openstackClient) DetachPort(portId, serverId string) error {
-	result := attachinterfaces.Delete(me.clients.ComputeClient, serverId, portId)
-	return result.ExtractErr()
-}
-
-// DeletePort deletes the port
-func (me *openstackClient) DeletePort(portId string) error {
-	result := ports.Delete(me.clients.NetworkClient, portId)
-	return result.ExtractErr()
 }
 
 type FixedIP struct {
