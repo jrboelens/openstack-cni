@@ -64,14 +64,13 @@ func BuildApp() (*App, error) {
 	}
 	config := NewConfig()
 	opts := PortReaperOpts{
-		Interval: config.ReapInterval,
-		Client:   deps.OpenstackClient(),
+		Interval:   config.ReapInterval,
+		MinPortAge: config.MinPortAge,
 	}
-	reaper := NewPortReaper(opts)
 	app, err := NewApp(
 		config,
 		NewRestServer(config, deps),
-		reaper)
+		NewPortReaper(deps.OpenstackClient(), opts))
 	if err != nil {
 		Log().Error().Str("addr", app.config.ListenAddr).AnErr("err", err).Msg("failed to initialize server")
 		return nil, err

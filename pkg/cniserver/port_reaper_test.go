@@ -16,7 +16,9 @@ import (
 )
 
 func Test_PortReaper(t *testing.T) {
-	t.Run("skeleton", func(t *testing.T) {
+	hostname, err := os.Hostname()
+	Assert(t).That(err, IsNil())
+	t.Run("port reaper attempts to delete ports", func(t *testing.T) {
 		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
 			serverId := "myId"
 			mock.GetServerByNameFunc = func(name string) (*servers.Server, error) {
@@ -27,17 +29,34 @@ func Test_PortReaper(t *testing.T) {
 					{Tags: []string{"foo=bar", "netns=/proc/1234/ns"}},
 				}, nil
 			}
-			mock.DeletePortFunc = func(portId string) error {
-				return nil
-			}
+			mock.DeletePortFunc = func(portId string) error { return nil }
 
-			hostname, err := os.Hostname()
-			Assert(t).That(err, IsNil())
-			opts := cniserver.PortReaperOpts{time.Second * 300, client}
-			reaper := cniserver.NewPortReaper(opts)
+			reaper := cniserver.NewPortReaper(client, PortReaperOpts())
 			err = reaper.Reap(hostname)
 			Assert(t).That(err, IsNil())
 
+			Assert(t).That(len(mock.DeletePortCalls()), Equals(1))
+		})
+	})
+
+	t.Run("will not reap a new port", func(t *testing.T) {
+		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
+			reaper := cniserver.NewPortReaper(client, PortReaperOpts())
+			port := ports.Port{CreatedAt: time.Now()}
+			mock.DeletePortFunc = func(portId string) error { return nil }
+			err = reaper.ReapPort(port)
+			Assert(t).That(err, IsNil())
+			Assert(t).That(len(mock.DeletePortCalls()), Equals(0))
+		})
+	})
+
+	t.Run("will reap an old port", func(t *testing.T) {
+		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
+			reaper := cniserver.NewPortReaper(client, PortReaperOpts())
+			port := ports.Port{CreatedAt: time.Now().Add(-(time.Second * 6000))}
+			mock.DeletePortFunc = func(portId string) error { return nil }
+			err = reaper.ReapPort(port)
+			Assert(t).That(err, IsNil())
 			Assert(t).That(len(mock.DeletePortCalls()), Equals(1))
 		})
 	})

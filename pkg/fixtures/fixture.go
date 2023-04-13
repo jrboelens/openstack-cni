@@ -106,9 +106,9 @@ func (me *ServerFixture) Start(t *testing.T) {
 	app, err := cniserver.NewApp(
 		me.cfg,
 		cniserver.NewRestServer(me.cfg, deps),
-		cniserver.NewPortReaper(cniserver.PortReaperOpts{
-			Interval: me.cfg.ReapInterval,
-			Client:   deps.OpenstackClient(),
+		cniserver.NewPortReaper(deps.OpenstackClient(), cniserver.PortReaperOpts{
+			Interval:   me.cfg.ReapInterval,
+			MinPortAge: me.cfg.MinPortAge,
 		}),
 	)
 	Assert(t).That(err, IsNil())

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
 	. "github.com/jboelensns/openstack-cni/pkg/logging"
 	"github.com/jboelensns/openstack-cni/pkg/openstack"
 	"github.com/jboelensns/openstack-cni/pkg/util"
@@ -18,15 +19,15 @@ type PortReaper struct {
 }
 
 type PortReaperOpts struct {
-	Interval time.Duration
-	Client   openstack.OpenstackClient
+	Interval   time.Duration
+	MinPortAge time.Duration
 }
 
-func NewPortReaper(opts PortReaperOpts) *PortReaper {
+func NewPortReaper(client openstack.OpenstackClient, opts PortReaperOpts) *PortReaper {
 	hostname, _ := os.Hostname()
 	return &PortReaper{
 		opts:     opts,
-		client:   opts.Client,
+		client:   client,
 		hostname: hostname,
 	}
 }
@@ -47,7 +48,7 @@ func (me *PortReaper) Stop() {
 	}
 }
 
-// break this out into another struct/func or inject it
+// Reap deletes any ports whose network namespaces no longer exist
 func (me *PortReaper) Reap(hostname string) error {
 	Log().Info().Msg("reaping ports")
 	// lookup the server
@@ -63,24 +64,35 @@ func (me *PortReaper) Reap(hostname string) error {
 	}
 
 	for _, port := range ports {
-		// skip new ports
-
-		netNs := ""
-		for _, tag := range port.Tags {
-			if strings.HasPrefix(tag, "netns=") {
-				netNs = strings.Split(tag, "=")[1]
-			}
-		}
-
-		if !util.DirExists(netNs) {
-			Log().Info().Str("portId", port.ID).Msg("attempting to reap port")
-			if err := me.client.DeletePort(port.ID); err != nil {
-				return err
-			}
-			Log().Info().Str("portId", port.ID).Msg("succesfully reaped port")
+		if err := me.ReapPort(port); err != nil {
+			Log().Err(err).Str("portId", port.ID).Msg("failed to reap port")
 		}
 	}
 
+	return nil
+}
+
+// Reap deletes any ports whose network namespaces no longer exist
+func (me *PortReaper) ReapPort(port ports.Port) error {
+	// skip ports that were created recently
+	if time.Now().Sub(port.CreatedAt) <= me.opts.MinPortAge {
+		return nil
+	}
+
+	netNs := ""
+	for _, tag := range port.Tags {
+		if strings.HasPrefix(tag, "netns=") {
+			netNs = strings.Split(tag, "=")[1]
+		}
+	}
+
+	if !util.DirExists(netNs) {
+		Log().Info().Str("portId", port.ID).Msg("attempting to reap port")
+		if err := me.client.DeletePort(port.ID); err != nil {
+			return err
+		}
+		Log().Info().Str("portId", port.ID).Msg("successfully reaped port")
+	}
 	return nil
 }
 

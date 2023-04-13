@@ -2,10 +2,12 @@ package fixtures
 
 import (
 	"net"
+	"time"
 
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
 	currentcni "github.com/containernetworking/cni/pkg/types/040"
+	"github.com/jboelensns/openstack-cni/pkg/cniserver"
 	"github.com/jboelensns/openstack-cni/pkg/util"
 )
 
@@ -86,4 +88,8 @@ func (me *TestData) CniResult() *currentcni.Result {
 			// Options:     []string{},
 		},
 	}
+}
+
+func PortReaperOpts() cniserver.PortReaperOpts {
+	return cniserver.PortReaperOpts{Interval: time.Second * 300, MinPortAge: time.Second * 300}
 }

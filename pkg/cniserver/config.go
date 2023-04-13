@@ -14,6 +14,7 @@ type Config struct {
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 	ReapInterval time.Duration
+	MinPortAge   time.Duration
 }
 
 // NewConfig creates a new default Config
@@ -29,6 +30,7 @@ func NewConfig() Config {
 		ReadTimeout:  getEnvDuration("CNI_READ_TIMEOUT", "10s"),
 		WriteTimeout: getEnvDuration("CNI_WRITE_TIMEOUT", "10s"),
 		ReapInterval: getEnvDuration("CNI_REAP_INTERVAL", "300s"),
+		MinPortAge:   getEnvDuration("CNI_MIN_PORT_AGE", "300s"),
 	}
 }
 
