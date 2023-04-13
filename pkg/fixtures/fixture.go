@@ -102,7 +102,15 @@ func (me *ServerFixture) Start(t *testing.T) {
 
 	me.cfg = cniserver.NewConfig()
 	me.cfg.ListenAddr = me.GetListenAddr(me.GetPort())
-	app, err := cniserver.NewApp(me.cfg, cniserver.SetupRoutes(deps))
+
+	app, err := cniserver.NewApp(
+		me.cfg,
+		cniserver.NewRestServer(me.cfg, deps),
+		cniserver.NewPortReaper(cniserver.PortReaperOpts{
+			Interval: me.cfg.ReapInterval,
+			Client:   deps.OpenstackClient(),
+		}),
+	)
 	Assert(t).That(err, IsNil())
 	me.app = app
 	go func() {

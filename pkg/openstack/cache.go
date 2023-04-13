@@ -59,7 +59,8 @@ func (me *CachedClient) DeletePort(portId string) error {
 	//
 	// Note: this isn't he most efficient way to go about it, but it's significantly easier
 	// implement and understand
-	for _, key := range me.cash.Keys() {
+	keys := me.cash.Keys()
+	for _, key := range keys {
 		// only look at keys having to do with Ports
 		if !strings.HasPrefix(key, "GetPort") {
 			continue
@@ -67,7 +68,11 @@ func (me *CachedClient) DeletePort(portId string) error {
 
 		// if we find a port with a matching id, delete it
 		// if we find a slice of ports, deleting the one that has a matchind id
-		val, _ := me.cash.Get(key)
+		val, ok := me.cash.Get(key)
+		if !ok {
+			continue
+		}
+
 		switch v := val.(type) {
 		case *ports.Port:
 			if v.ID == portId {

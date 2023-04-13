@@ -87,9 +87,6 @@ OS_SECURITY_GROUPS="default;project_default"
 
 * `GET /health` - returns the health of the server including whether OpenStack authentication is working
 * `GET /ping` - returns "PONG"
-* `GET /state/{containerId}/{ifname}` - returns the state for an container/interface tuple
-* `DELETE /state/{containerId}/{ifname}` - deletes the state for a container/interface tuple
-* `POST /state` - sets the state for a container/interface tuple
 * `POST /cni` - handles `ADD/DEL/CHECK` CNI commands
 
 # Environment Variables
@@ -99,8 +96,11 @@ OS_SECURITY_GROUPS="default;project_default"
 * `CNI_API_URL` - optionally the url `openstack-cni` will used to contact `openstack-cni-daemon`.  Also overrides `openstack-cni-daemon`'s listen address (`http://127.0.0.1:4242`)
 * `CNI_CONFIG_FILE` - optionally override the configuration `openstack-cni` reads (`/etc/cni/net.d/openstack-cni.conf`)
 * `CNI_REQUEST_TIMEOUT` - optionally `openstack-cni`'s request timeout in seconds (`60`)
-* `OS_REGION_NAME` - optionally override the region ('RegionOne')
-* `CNI_STATE_DIR` - optionally override the state directory ('/host/etc/cni/net.d/openstack-cni-state`)
+* `OS_REGION_NAME` - optionally override the region (`RegionOne`)
+* `CNI_READ_TIMEOUT` - optionally override the http server read timeout (`10s`)
+* `CNI_WRITE_TIMEOUT` - optionally override the http server write timeout (`10s`)
+* `CNI_REAP_INTERVAL` - optionally override the port cleanup interval (`300s`)
+* `CNI_CACHE_TTL` - optionally override the cache ttl  (`300s`)
 
 ### Testing:
 The following vars control the test that interact directly with the OpenStack APIs

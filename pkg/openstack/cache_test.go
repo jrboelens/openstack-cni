@@ -134,6 +134,53 @@ func Test_Cache(t *testing.T) {
 		})
 	})
 
+	t.Run("Port cache can be purged via a delete", func(t *testing.T) {
+		WithMockClientWithExpiry(t, time.Second*10000, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
+			testPort := &ports.Port{ID: "myId", Tags: []string{"foo=bar", "this=that"}, DeviceID: "deviceId"}
+
+			// mock the creation and returning of a port
+			mock.CreatePortFunc = func(opts ports.CreateOpts) (*ports.Port, error) { return testPort, nil }
+			mock.DeletePortFunc = func(portId string) error { return nil }
+			mock.GetPortByTagsFunc = func(tags []string) (*ports.Port, error) { return testPort, nil }
+			mock.GetPortFunc = func(portId string) (*ports.Port, error) { return testPort, nil }
+			mock.GetPortsByDeviceIdFunc = func(deviceId string) ([]ports.Port, error) { return []ports.Port{*testPort}, nil }
+
+			// get the port via all possible methods in order to populate the cache
+			port, err := client.GetPortByTags(testPort.Tags)
+			Assert(t).That(err, IsNil())
+			Assert(t).That(port.Tags, Equals(testPort.Tags))
+
+			port, err = client.GetPort(testPort.ID)
+			Assert(t).That(err, IsNil())
+			Assert(t).That(port.Tags, Equals(testPort.Tags))
+
+			allports, err := client.GetPortsByDeviceId(testPort.DeviceID)
+			Assert(t).That(err, IsNil())
+			Assert(t).That(allports, HasLen(1))
+
+			// delete port which should also clear out the GetPort* related cache keys
+			Assert(t).That(client.DeletePort(testPort.ID), IsNil())
+
+			// the port was deleted so now we mock nothing is returned
+			mock.GetPortByTagsFunc = func(tags []string) (*ports.Port, error) { return nil, openstack.ErrPortNotFound }
+			mock.GetPortFunc = func(portId string) (*ports.Port, error) { return nil, openstack.ErrPortNotFound }
+			mock.GetPortsByDeviceIdFunc = func(deviceId string) ([]ports.Port, error) { return []ports.Port{}, nil }
+
+			// assert that we get a port via any of the GetPort* related methods
+			port, err = client.GetPortByTags(testPort.Tags)
+			Assert(t).That(err, Equals(openstack.ErrPortNotFound))
+			Assert(t).That(port, IsNil())
+
+			port, err = client.GetPort(testPort.ID)
+			Assert(t).That(err, Equals(openstack.ErrPortNotFound))
+			Assert(t).That(port, IsNil())
+
+			allports, err = client.GetPortsByDeviceId(testPort.DeviceID)
+			Assert(t).That(err, IsNil())
+			Assert(t).That(allports, HasLen(0))
+		})
+	})
+
 	t.Run("GetProjectByName is cached", func(t *testing.T) {
 		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
 			name := "myname"

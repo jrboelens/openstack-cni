@@ -17,54 +17,72 @@ import (
 type App struct {
 	config Config
 	server *http.Server
+	reaper *PortReaper
 }
 
 // NewApp creates a new App from configuration
-func NewApp(config Config, mux http.Handler) (*App, error) {
+func NewApp(config Config, server *http.Server, reaper *PortReaper) (*App, error) {
 	return &App{
 		config: config,
-		server: &http.Server{
-			Addr:         config.ListenAddr,
-			Handler:      mux,
-			ReadTimeout:  config.ReadTimeout,
-			WriteTimeout: config.WriteTimeout,
-		},
+		server: server,
+		reaper: reaper,
 	}, nil
 }
 
 // Run starts the http server and blocks
 func (me *App) Run() error {
+	Log().Info().Str("duration", me.config.ReapInterval.String()).Msg("starting port reaper")
+	me.reaper.Start()
 	Log().Info().Str("addr", me.server.Addr).Msg("starting http server")
 	if err := me.server.ListenAndServe(); err != http.ErrServerClosed {
 		Error("failed to start http server", err)
 		return err
 	}
-
 	return nil
 }
 
 // Shutdown signals the http server to shutdown
 func (me *App) Shutdown(ctx context.Context) error {
-	Log().Info().Msg("shutting down server")
+	Log().Info().Msg("shutting port reaper")
+	me.reaper.Stop()
+	Log().Info().Msg("shut down port reaper")
+	Log().Info().Msg("shutting down http server")
 	defer func() {
-		Log().Info().Msg("shut down server")
+		Log().Info().Msg("shut down http server")
 	}()
 	return me.server.Shutdown(ctx)
 }
 
-// Run builds up the dependencies for the application, creates the application and runs it
-func Run() error {
+func BuildApp() (*App, error) {
 	SetupLogging("openstack-cni-daemon", httplog.DefaultOptions)
 	Log().Info().Msg("preparing http server")
 
 	deps, err := NewBuilder().Build()
 	if err != nil {
 		Error("failed to build dependencies", err)
-		return err
+		return nil, err
 	}
-	app, err := NewApp(NewConfig(), SetupRoutes(deps))
+	config := NewConfig()
+	opts := PortReaperOpts{
+		Interval: config.ReapInterval,
+		Client:   deps.OpenstackClient(),
+	}
+	reaper := NewPortReaper(opts)
+	app, err := NewApp(
+		config,
+		NewRestServer(config, deps),
+		reaper)
 	if err != nil {
 		Log().Error().Str("addr", app.config.ListenAddr).AnErr("err", err).Msg("failed to initialize server")
+		return nil, err
+	}
+	return app, err
+}
+
+// Run builds up the dependencies for the application, creates the application and runs it
+func Run() error {
+	app, err := BuildApp()
+	if err != nil {
 		return err
 	}
 
@@ -80,17 +98,6 @@ func (me *App) HandleSignals() {
 			Error("error handling signals", err)
 		}
 	}()
-}
-
-// SetupRoutes sets up the http routes to be handled by the application
-func SetupRoutes(deps *Deps) http.Handler {
-	router := chi.NewRouter()
-	router.Use(middleware.Logger)
-	router.Get("/health", (NewHealthHandler(deps.OpenstackClient())).HandleRequest)
-	router.Get("/ping", PingHandler)
-	router.Post("/cni", (&CniHandler{deps.CniHandler()}).HandleRequest)
-
-	return router
 }
 
 // PingHandler handles /ping requests
@@ -115,4 +122,19 @@ func HandleSignals(ctx context.Context, callbacks ...func(context.Context) error
 		return errs
 	}
 	return nil
+}
+
+func NewRestServer(config Config, deps *Deps) *http.Server {
+	router := chi.NewRouter()
+	router.Use(middleware.Logger)
+	router.Get("/health", (NewHealthHandler(deps.OpenstackClient())).HandleRequest)
+	router.Get("/ping", PingHandler)
+	router.Post("/cni", (&CniHandler{deps.CniHandler()}).HandleRequest)
+
+	return &http.Server{
+		Addr:         config.ListenAddr,
+		Handler:      router,
+		ReadTimeout:  config.ReadTimeout,
+		WriteTimeout: config.WriteTimeout,
+	}
 }

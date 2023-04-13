@@ -88,16 +88,6 @@ func WithTempDir(t *testing.T, callback func(dir string)) {
 	callback(baseDir)
 }
 
-func WithStateDir(t *testing.T, callback func(dir string)) {
-	t.Helper()
-	WithTempDir(t, func(dir string) {
-		// make sure our state dir can be overridden
-		os.Setenv("CNI_STATE_DIR", dir)
-		defer func() { os.Unsetenv("CNI_STATE_DIR") }()
-		callback(dir)
-	})
-}
-
 func WithOpenstackClient(t *testing.T, callback func(client openstack.OpenstackClient)) {
 	t.Helper()
 	client, err := openstack.NewOpenstackClient()

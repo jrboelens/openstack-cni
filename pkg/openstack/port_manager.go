@@ -161,17 +161,6 @@ func (me *PortManager) TeardownPort(opts TearDownPortOpts) error {
 	}
 	log.Info().Msg("found port by tags")
 
-	// lookup port by ip
-	// log.Info().Msg("looking up port by ipaddress")
-	// port, err := me.client.GetPortByIp(opts.IpAddress)
-	// if err != nil {
-	// 	return err
-	// }
-	// if port == nil {
-	// 	return fmt.Errorf("failed to find port by IP Address %s", opts.IpAddress)
-	// }
-	// log.Info().Msg("found port by ipaddress")
-
 	if !opts.SkipPortDetach {
 		// look up the server
 		log.Info().Msg("looking up server")
