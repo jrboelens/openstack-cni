@@ -91,11 +91,20 @@ func (me CniCommand) ForLog() [][]string {
 */
 type CniConfig struct {
 	*types.NetConf
-	Network        string   `json:"network,omitempty"`
-	PortName       string   `json:"port_name,omitempty"`
-	ProjectName    string   `json:"project_name,omitempty"`
-	SecurityGroups []string `json:"security_groups,omitempty"`
-	SubnetName     string   `json:"subnet_name,omitempty"`
+	AllowedAddressPairs []AddressPair `json:"allowed_address_pairs,omitempty"`
+	AdminStateUp        *bool         `json:"admin_state_up,omitempty"`
+	DeviceId            string        `json:"device_id,omitempty"`
+	DeviceOwner         string        `json:"device_owner,omitempty"`
+	// FixedIPs string `json:"fixed_ips,omitempty"`
+	MacAddress      string             `json:"mac_address,omitempty"`
+	Network         string             `json:"network,omitempty"`
+	PortDescription string             `json:"port_description,omitempty"`
+	PortName        string             `json:"port_name,omitempty"`
+	ProjectName     string             `json:"project_name,omitempty"`
+	SecurityGroups  *[]string          `json:"security_groups,omitempty"`
+	SubnetName      string             `json:"subnet_name,omitempty"`
+	TenantId        string             `json:"tenant_id,omitempty"`
+	ValueSpecs      *map[string]string `json:"value_specs,omitempty"`
 }
 
 func NewCniConfig(bytes []byte) (CniConfig, error) {
@@ -111,6 +120,11 @@ func NewCniConfig(bytes []byte) (CniConfig, error) {
 	}
 
 	return *conf, nil
+}
+
+type AddressPair struct {
+	IpAddress  string `json:"ip_address,omitempty"`
+	MacAddress string `json:"mac_address,omitempty"`
 }
 
 // ParseCniArgs parses a key value pair such as "IgnoreUnknown=true;K8S_POD_NAMESPACE=lightning;"

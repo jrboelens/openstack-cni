@@ -26,8 +26,22 @@ func Test_PortManager(t *testing.T) {
 			SetupAndTeardownPort(t, context, client)
 		})
 
-		t.Run("can setup a port with a subnet and tear it down", func(t *testing.T) {
+		t.Run("can setup a port with all options and tear it down", func(t *testing.T) {
 			context.CniConfig.SubnetName = cfg.SubnetName
+			context.CniConfig.PortDescription = "description"
+			f := false
+			context.CniConfig.AdminStateUp = &f
+			context.CniConfig.MacAddress = "52:54:00:28:ea:16"
+			// This cannot be tested without a sepcific device id
+			// context.CniConfig.DeviceId = "4be2ed0a-23c4-4c5b-91b3-eedce17b3de2"
+			context.CniConfig.DeviceOwner = "compute:nova"
+			context.CniConfig.TenantId = "67f06cc9d851455f94fc0380233ab86c"
+			context.CniConfig.AllowedAddressPairs = []util.AddressPair{{IpAddress: "1.1.1.1", MacAddress: "52:54:00:28:ea:16"}}
+			// This cannot be tested unless openstack is setup to accept specific value spec pairs
+			// context.CniConfig.ValueSpecs = &map[string]string{
+			// 	"foo": "bar",
+			// }
+
 			SetupAndTeardownPort(t, context, client)
 		})
 	})

@@ -88,7 +88,6 @@ func (me *openstackClient) DetachPort(portId, serverId string) error {
 	return result.ExtractErr()
 }
 
-
 var ErrServerNotFound = fmt.Errorf("server not found")
 
 // GetServer returns a single server based on a server name
