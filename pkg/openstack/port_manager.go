@@ -2,6 +2,7 @@ package openstack
 
 import (
 	"fmt"
+	"net"
 
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/attachinterfaces"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
@@ -23,7 +24,7 @@ type PortManager struct {
 
 // SetupPort creates a new port and assigns it to a server
 func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
-	log := Log().With().Str("command", "ADD").Str("hostname", opts.Hostname).Str("network-name", opts.NetworkName).Str("project-name", opts.ProjectName).Str("port-name", opts.PortName).Logger()
+	log := Log().With().Str("command", "ADD").Str("hostname", opts.Hostname).Str("networkName", opts.NetworkName).Str("projectName", opts.ProjectName).Str("portName", opts.PortName).Logger()
 	result := &SetupPortResult{}
 	var err error
 
@@ -68,7 +69,7 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 		// if security groups were specified, look them up
 		sgIds := make([]string, len(opts.SecurityGroups), len(opts.SecurityGroups))
 		for i, sgName := range opts.SecurityGroups {
-			log.Info().Str("sg-name", sgName).Msg("looking up security group")
+			log.Info().Str("sgName", sgName).Msg("looking up security group")
 			sg, err := me.client.GetSecurityGroupByName(sgName, projectId)
 			if err != nil {
 				return nil, fmt.Errorf("failed to lookup security group named %s", sgName)
@@ -76,7 +77,7 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 			if sg == nil {
 				return result, fmt.Errorf("failed to find security group named %s", sgName)
 			}
-			log.Info().Str("sg-name", sgName).Msg("found security group")
+			log.Info().Str("sgName", sgName).Msg("found security group")
 			sgIds[i] = sg.ID
 		}
 		opts.SecurityGroups = sgIds
@@ -93,7 +94,7 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 
 	// optionally include the subnet when creating the port
 	if opts.SubnetName != "" {
-		log.Info().Str("subnet-name", opts.SubnetName).Str("network-id", portOpts.NetworkID).Msg("looking up subnet")
+		log.Info().Str("subnetName", opts.SubnetName).Str("networkId", portOpts.NetworkID).Msg("looking up subnet")
 		subnet, err := me.client.GetSubnetByName(opts.SubnetName, portOpts.NetworkID)
 		if err != nil {
 			return result, err
@@ -101,7 +102,7 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 		if subnet == nil {
 			return result, fmt.Errorf("failed to find subnet named %s in network %s", opts.SubnetName, portOpts.NetworkID)
 		}
-		log.Info().Str("subnet-name", opts.SubnetName).Str("network-id", portOpts.NetworkID).Msg("found subnet")
+		log.Info().Str("subnetName", opts.SubnetName).Str("networkId", portOpts.NetworkID).Msg("found subnet")
 		portOpts.FixedIPs = []FixedIP{{SubnetID: subnet.ID}}
 	}
 
@@ -112,8 +113,18 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 	}
 	log.Info().Msg("created port")
 
+	// add tags to the port
+	log.Info().Msg("adding tags to port")
+	if len(opts.Tags.Tags) > 0 {
+		tagger := NewNeutronTagger(me.client.Clients().NetworkClient, Ports)
+		if err := tagger.SetAll(result.Port.ID, opts.Tags); err != nil {
+			return result, err
+		}
+		log.Info().Msg("added tags to port")
+	}
+
 	// lookup the subnet that the port came from
-	log.Info().Str("subnet-id", result.Port.FixedIPs[0].SubnetID).Msg("looking up subnet by id")
+	log.Info().Str("subnetId", result.Port.FixedIPs[0].SubnetID).Msg("looking up subnet by id")
 	result.Subnet, err = me.client.GetSubnet(result.Port.FixedIPs[0].SubnetID)
 	if err != nil {
 		return result, err
@@ -125,30 +136,30 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 
 	if !opts.SkipPortAttach {
 		// assign the port to the VM
-		log.Info().Str("port-id", result.Port.ID).Str("server-id", result.Server.ID).Msg("assigning port to server")
+		log.Info().Str("portId", result.Port.ID).Str("serverId", result.Server.ID).Msg("assigning port to server")
 		result.Attachment, err = me.client.AssignPort(result.Port.ID, result.Server.ID)
 		if err != nil {
 			return result, err
 		}
-		log.Info().Str("port-id", result.Port.ID).Str("server-id", result.Server.ID).Msg("assigned port to server")
+		log.Info().Str("portId", result.Port.ID).Str("serverId", result.Server.ID).Msg("assigned port to server")
 	}
 
 	return result, nil
 }
 
 func (me *PortManager) TeardownPort(opts TearDownPortOpts) error {
-	log := Log().With().Str("command", "DEL").Str("hostname", opts.Hostname).Str("ipaddress", opts.IpAddress).Logger()
+	log := Log().With().Str("command", "DEL").Str("hostname", opts.Hostname).Str("tags", opts.Tags.String()).Logger()
 
-	// lookup port by ip
-	log.Info().Msg("looking up port by ipaddress")
-	port, err := me.client.GetPortByIp(opts.IpAddress)
+	// lookup port by tags
+	log.Info().Msg("looking up port by tags")
+	port, err := me.client.GetPortByTags(opts.Tags.AsStringSlice())
 	if err != nil {
 		return err
 	}
 	if port == nil {
-		return fmt.Errorf("failed to find port by IP Address %s", opts.IpAddress)
+		return fmt.Errorf("failed to find port by tags %s", opts.Tags)
 	}
-	log.Info().Msg("found port by ipaddress")
+	log.Info().Msg("found port by tags")
 
 	if !opts.SkipPortDetach {
 		// look up the server
@@ -162,19 +173,19 @@ func (me *PortManager) TeardownPort(opts TearDownPortOpts) error {
 		}
 		log.Info().Msg("found server")
 
-		log.Info().Str("port-id", port.ID).Str("server-id", server.ID).Msg("detaching port")
+		log.Info().Str("portId", port.ID).Str("serverId", server.ID).Msg("detaching port")
 		err = me.client.DetachPort(port.ID, server.ID)
 		if err != nil {
 			return err
 		}
-		log.Info().Str("port-id", port.ID).Str("server-id", server.ID).Msg("detached port")
+		log.Info().Str("portId", port.ID).Str("serverId", server.ID).Msg("detached port")
 	}
 
-	log.Info().Str("port-id", port.ID).Msg("deleting port")
+	log.Info().Str("portId", port.ID).Msg("deleting port")
 	if err := me.client.DeletePort(port.ID); err != nil {
 		return err
 	}
-	log.Info().Str("port-id", port.ID).Msg("deleted port")
+	log.Info().Str("portId", port.ID).Msg("deleted port")
 	return nil
 }
 
@@ -186,6 +197,7 @@ type SetupPortOpts struct {
 	SecurityGroups []string
 	SubnetName     string
 	SkipPortAttach bool
+	Tags           NeutronTags
 }
 
 func SetupPortOptsFromContext(context util.CniContext) SetupPortOpts {
@@ -200,16 +212,9 @@ func SetupPortOptsFromContext(context util.CniContext) SetupPortOpts {
 }
 
 type TearDownPortOpts struct {
-	IpAddress      string
 	Hostname       string
+	Tags           NeutronTags
 	SkipPortDetach bool
-}
-
-func TearDownPortOptsFromContext(hostname, ipAddress string) TearDownPortOpts {
-	return TearDownPortOpts{
-		IpAddress: ipAddress,
-		Hostname:  hostname,
-	}
 }
 
 // SetupPortResult contains information gathered while setting up a port
@@ -219,4 +224,14 @@ type SetupPortResult struct {
 	Subnet     *subnets.Subnet
 	Port       *ports.Port
 	Attachment *attachinterfaces.Interface
+}
+
+// GetIp returns an IPNet created from teh first FixedIP
+func (me *SetupPortResult) GetIp() (*net.IPNet, error) {
+	ip := net.ParseIP(me.Port.FixedIPs[0].IPAddress)
+	_, cidr, err := net.ParseCIDR(me.Subnet.CIDR)
+	if err != nil {
+		return nil, err
+	}
+	return &net.IPNet{IP: ip, Mask: cidr.Mask}, nil
 }

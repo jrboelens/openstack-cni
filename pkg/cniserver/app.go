@@ -13,68 +13,75 @@ import (
 	. "github.com/jboelensns/openstack-cni/pkg/logging"
 )
 
+// App represents the application running the http server
 type App struct {
 	config Config
 	server *http.Server
+	reaper *PortReaper
 }
 
-func SetupRoutes(deps *Deps) http.Handler {
-	router := chi.NewRouter()
-	router.Use(middleware.Logger)
-	router.Get("/health", (NewHealthHandler(deps.OpenstackClient())).HandleRequest)
-	router.Get("/ping", PingHandler)
-	router.Post("/cni", (&CniHandler{deps.CniHandler()}).HandleRequest)
-
-	// state
-	stateHandler := &StateHandler{deps.State()}
-	router.Get("/state/{containerId}/{ifname}", stateHandler.Get)
-	router.Delete("/state/{containerId}/{ifname}", stateHandler.Delete)
-	router.Post("/state", stateHandler.Set)
-	return router
-}
-
-func NewApp(config Config, mux http.Handler) (*App, error) {
+// NewApp creates a new App from configuration
+func NewApp(config Config, server *http.Server, reaper *PortReaper) (*App, error) {
 	return &App{
 		config: config,
-		server: &http.Server{
-			Addr:         config.ListenAddr,
-			Handler:      mux,
-			ReadTimeout:  config.ReadTimeout,
-			WriteTimeout: config.WriteTimeout,
-		},
+		server: server,
+		reaper: reaper,
 	}, nil
 }
 
+// Run starts the http server and blocks
 func (me *App) Run() error {
+	Log().Info().Str("duration", me.config.ReapInterval.String()).Msg("starting port reaper")
+	me.reaper.Start()
 	Log().Info().Str("addr", me.server.Addr).Msg("starting http server")
 	if err := me.server.ListenAndServe(); err != http.ErrServerClosed {
 		Error("failed to start http server", err)
 		return err
 	}
-
 	return nil
 }
 
+// Shutdown signals the http server to shutdown
 func (me *App) Shutdown(ctx context.Context) error {
-	Log().Info().Msg("shutting down server")
+	Log().Info().Msg("shutting port reaper")
+	me.reaper.Stop()
+	Log().Info().Msg("shut down port reaper")
+	Log().Info().Msg("shutting down http server")
 	defer func() {
-		Log().Info().Msg("shut down server")
+		Log().Info().Msg("shut down http server")
 	}()
 	return me.server.Shutdown(ctx)
 }
 
-func Run() error {
+func BuildApp() (*App, error) {
 	SetupLogging("openstack-cni-daemon", httplog.DefaultOptions)
 	Log().Info().Msg("preparing http server")
 
 	deps, err := NewBuilder().Build()
 	if err != nil {
 		Error("failed to build dependencies", err)
-		return err
+		return nil, err
 	}
-	app, err := NewApp(NewConfig(), SetupRoutes(deps))
+	config := NewConfig()
+	opts := PortReaperOpts{
+		Interval:   config.ReapInterval,
+		MinPortAge: config.MinPortAge,
+	}
+	app, err := NewApp(
+		config,
+		NewRestServer(config, deps),
+		NewPortReaper(deps.OpenstackClient(), opts))
 	if err != nil {
 		Log().Error().Str("addr", app.config.ListenAddr).AnErr("err", err).Msg("failed to initialize server")
+		return nil, err
+	}
+	return app, err
+}
+
+// Run builds up the dependencies for the application, creates the application and runs it
+func Run() error {
+	app, err := BuildApp()
+	if err != nil {
 		return err
 	}
 
@@ -82,6 +89,7 @@ func Run() error {
 	return app.Run()
 }
 
+// HandleSignals setups signal handling
 func (me *App) HandleSignals() {
 	go func() {
 		err := HandleSignals(context.Background(), me.Shutdown)
@@ -91,10 +99,12 @@ func (me *App) HandleSignals() {
 	}()
 }
 
+// PingHandler handles /ping requests
 func PingHandler(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte("PONG"))
 }
 
+// HandleSignals handlers SIGINT and SIGINT signals
 func HandleSignals(ctx context.Context, callbacks ...func(context.Context) error) error {
 	sigint := make(chan os.Signal, 1)
 	signal.Notify(sigint, os.Interrupt)
@@ -111,4 +121,19 @@ func HandleSignals(ctx context.Context, callbacks ...func(context.Context) error
 		return errs
 	}
 	return nil
+}
+
+func NewRestServer(config Config, deps *Deps) *http.Server {
+	router := chi.NewRouter()
+	router.Use(middleware.Logger)
+	router.Get("/health", (NewHealthHandler(deps.OpenstackClient())).HandleRequest)
+	router.Get("/ping", PingHandler)
+	router.Post("/cni", (&CniHandler{deps.CniHandler()}).HandleRequest)
+
+	return &http.Server{
+		Addr:         config.ListenAddr,
+		Handler:      router,
+		ReadTimeout:  config.ReadTimeout,
+		WriteTimeout: config.WriteTimeout,
+	}
 }

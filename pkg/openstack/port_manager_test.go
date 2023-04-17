@@ -4,6 +4,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jboelensns/openstack-cni/pkg/cniserver"
 	. "github.com/jboelensns/openstack-cni/pkg/fixtures"
 	"github.com/jboelensns/openstack-cni/pkg/openstack"
 	"github.com/jboelensns/openstack-cni/pkg/util"
@@ -35,34 +36,35 @@ func Test_PortManager(t *testing.T) {
 func SetupAndTeardownPort(t *testing.T, context util.CniContext, client openstack.OpenstackClient) {
 	pm := openstack.NewPortManager(client)
 	opts := openstack.SetupPortOptsFromContext(context)
+	opts.Tags = cniserver.NewPortTags(context.Command)
 
 	results, err := pm.SetupPort(opts)
 	Assert(t).That(err, IsNil(), "failed to setup port")
-	ipAddress := results.Attachment.FixedIPs[0].IPAddress
 
-	_, err = client.GetPortByIp(ipAddress)
-	Assert(t).That(err, IsNil(), "failed get port by ip %s", ipAddress)
+	_, err = client.GetPortByTags(opts.Tags.AsStringSlice())
+	Assert(t).That(err, IsNil(), "failed get port by tags %s", opts.Tags.String())
 
-	err = pm.TeardownPort(openstack.TearDownPortOptsFromContext(context.Hostname, ipAddress))
+	tdOpts := openstack.TearDownPortOpts{Hostname: context.Hostname, Tags: cniserver.NewPortTags(context.Command)}
+	err = pm.TeardownPort(tdOpts)
 	Assert(t).That(err, IsNil(), "failed teardown port")
 
 	_, err = client.GetPort(results.Port.ID)
 	if err == nil {
-		t.Errorf("expected port to be gone %s", ipAddress)
+		t.Errorf("expected port to be gone with tags %s", tdOpts.Tags.String())
 	}
 
 	results, err = pm.SetupPort(opts)
 	Assert(t).That(err, IsNil(), "failed to setup port")
-	ipAddress = results.Attachment.FixedIPs[0].IPAddress
 
-	_, err = client.GetPortByIp(ipAddress)
-	Assert(t).That(err, IsNil(), "failed get port by ip %s", ipAddress)
+	_, err = client.GetPortByTags(opts.Tags.AsStringSlice())
+	Assert(t).That(err, IsNil(), "failed get port by tags %s", opts.Tags.String())
 
-	err = pm.TeardownPort(openstack.TearDownPortOptsFromContext(context.Hostname, ipAddress))
+	tdOpts = openstack.TearDownPortOpts{Hostname: context.Hostname, Tags: cniserver.NewPortTags(context.Command)}
+	err = pm.TeardownPort(tdOpts)
 	Assert(t).That(err, IsNil(), "failed teardown port")
 
 	_, err = client.GetPort(results.Port.ID)
 	if err == nil {
-		t.Errorf("expected port to be gone %s", ipAddress)
+		t.Errorf("expected port to be gone with tags %s", tdOpts.Tags.String())
 	}
 }

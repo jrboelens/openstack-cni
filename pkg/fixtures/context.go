@@ -8,7 +8,6 @@ import (
 
 	"github.com/jboelensns/openstack-cni/pkg/cniplugin"
 	"github.com/jboelensns/openstack-cni/pkg/cniserver"
-	"github.com/jboelensns/openstack-cni/pkg/cnistate"
 	"github.com/jboelensns/openstack-cni/pkg/fixtures/mocks"
 	"github.com/jboelensns/openstack-cni/pkg/openstack"
 	"github.com/jboelensns/openstack-cni/pkg/util"
@@ -30,7 +29,6 @@ func WithServerOpts(t *testing.T, opts *ServerOpts, callback func(fix *ServerFix
 type ServerOpts struct {
 	CniHandler      cniserver.CommandHandler
 	OpenstackClient openstack.OpenstackClient
-	State           cnistate.State
 	Networking      cniplugin.Networking
 }
 
@@ -90,25 +88,11 @@ func WithTempDir(t *testing.T, callback func(dir string)) {
 	callback(baseDir)
 }
 
-func WithStateDir(t *testing.T, callback func(dir string)) {
+func WithOpenstackClient(t *testing.T, callback func(client openstack.OpenstackClient)) {
 	t.Helper()
-	WithTempDir(t, func(dir string) {
-		// make sure our state dir can be overridden
-		os.Setenv("CNI_STATE_DIR", dir)
-		defer func() { os.Unsetenv("CNI_STATE_DIR") }()
-		callback(dir)
-	})
-}
-
-func WithCniState(t *testing.T, callback func(state cnistate.State)) {
-	t.Helper()
-	WithTempDir(t, func(dir string) {
-		WithStateDir(t, func(dir string) {
-			stateDir := cnistate.GetStateBaseDir()
-			Assert(t).That(stateDir, Equals(dir))
-			callback(cnistate.NewState(stateDir))
-		})
-	})
+	client, err := openstack.NewOpenstackClient()
+	Assert(t).That(err, IsNil())
+	callback(client)
 }
 
 func Getenv(key, def string) string {

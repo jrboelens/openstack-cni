@@ -11,7 +11,6 @@ import (
 	"github.com/jboelensns/openstack-cni/pkg/cniclient"
 	"github.com/jboelensns/openstack-cni/pkg/cniplugin"
 	"github.com/jboelensns/openstack-cni/pkg/cniserver"
-	"github.com/jboelensns/openstack-cni/pkg/cnistate"
 	"github.com/jboelensns/openstack-cni/pkg/fixtures/mocks"
 	"github.com/jboelensns/openstack-cni/pkg/openstack"
 	"github.com/jboelensns/openstack-cni/pkg/util"
@@ -25,7 +24,6 @@ type ServerFixture struct {
 	app        *cniserver.App
 	cniHandler cniserver.CommandHandler
 	openstack  openstack.OpenstackClient
-	state      cnistate.State
 	networking cniplugin.Networking
 	cfg        cniserver.Config
 }
@@ -33,7 +31,6 @@ type ServerFixture struct {
 func NewServerFixture(t *testing.T, opts *ServerOpts) *ServerFixture {
 	var cniHandler cniserver.CommandHandler = &mocks.CommandHandlerMock{}
 	var osClient openstack.OpenstackClient = &mocks.OpenstackClientMock{}
-	var state cnistate.State = &mocks.StateMock{}
 	var networking cniplugin.Networking = &mocks.NetworkingMock{}
 	if opts != nil {
 		if opts.CniHandler != nil {
@@ -41,9 +38,6 @@ func NewServerFixture(t *testing.T, opts *ServerOpts) *ServerFixture {
 		}
 		if opts.OpenstackClient != nil {
 			osClient = opts.OpenstackClient
-		}
-		if opts.State != nil {
-			state = opts.State
 		}
 		if opts.Networking != nil {
 			networking = opts.Networking
@@ -60,7 +54,6 @@ func NewServerFixture(t *testing.T, opts *ServerOpts) *ServerFixture {
 		t:          t,
 		cniHandler: cniHandler,
 		openstack:  osClient,
-		state:      state,
 		networking: networking,
 	}
 }
@@ -104,13 +97,20 @@ func (me *ServerFixture) Start(t *testing.T) {
 	deps, err := cniserver.NewBuilder().
 		WithCniHandler(me.cniHandler).
 		WithOpenstackClient(me.openstack).
-		WithState(me.state).
 		Build()
 	Assert(t).That(err, IsNil())
 
 	me.cfg = cniserver.NewConfig()
 	me.cfg.ListenAddr = me.GetListenAddr(me.GetPort())
-	app, err := cniserver.NewApp(me.cfg, cniserver.SetupRoutes(deps))
+
+	app, err := cniserver.NewApp(
+		me.cfg,
+		cniserver.NewRestServer(me.cfg, deps),
+		cniserver.NewPortReaper(deps.OpenstackClient(), cniserver.PortReaperOpts{
+			Interval:   me.cfg.ReapInterval,
+			MinPortAge: me.cfg.MinPortAge,
+		}),
+	)
 	Assert(t).That(err, IsNil())
 	me.app = app
 	go func() {

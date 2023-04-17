@@ -6,14 +6,17 @@ import (
 	"github.com/jboelensns/openstack-cni/pkg/openstack"
 )
 
+// HealthHandler handles all /health related requests
 type HealthHandler struct {
 	osClient openstack.OpenstackClient
 }
 
+// NewHealthHandler creates a new HealthHandler
 func NewHealthHandler(osApi openstack.OpenstackClient) *HealthHandler {
 	return &HealthHandler{osApi}
 }
 
+// HandleRequest executes health checks and returns the results
 func (me *HealthHandler) HandleRequest(w http.ResponseWriter, r *http.Request) {
 	health := HealthResponse{
 		IsHealthy: true,
@@ -51,11 +54,13 @@ func (me HealthHandler) checkOpenstack() HealthResponseCheck {
 	return resp
 }
 
+// HealthResponse is returned for GET /health
 type HealthResponse struct {
 	IsHealthy bool                  `json:"is_healthy,omitempty"`
 	Checks    []HealthResponseCheck `json:"checks,omitempty"`
 }
 
+// HealthResponse represents an invididual health check
 type HealthResponseCheck struct {
 	Name      string `json:"name,omitempty"`
 	IsHealthy bool   `json:"is_healthy,omitempty"`

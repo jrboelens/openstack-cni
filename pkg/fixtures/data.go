@@ -2,11 +2,12 @@ package fixtures
 
 import (
 	"net"
+	"time"
 
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
 	currentcni "github.com/containernetworking/cni/pkg/types/040"
-	"github.com/jboelensns/openstack-cni/pkg/cnistate"
+	"github.com/jboelensns/openstack-cni/pkg/cniserver"
 	"github.com/jboelensns/openstack-cni/pkg/util"
 )
 
@@ -15,16 +16,6 @@ type TestData struct {
 
 func NewTestData() *TestData {
 	return &TestData{}
-}
-
-func (me *TestData) IfaceInfo() *cnistate.IfaceInfo {
-	return &cnistate.IfaceInfo{
-		ContainerId: "deadf7ed",
-		Ifname:      "ens7",
-		IpAddress:   "1.2.3.4",
-		PodName:     "dummypod",
-		Namespace:   "/proc/387869/ns/net",
-	}
 }
 
 func (me *TestData) SkelArgs() *skel.CmdArgs {
@@ -43,7 +34,7 @@ func (me *TestData) SkelArgs() *skel.CmdArgs {
 func (me *TestData) CniCommand() util.CniCommand {
 	return util.CniCommand{
 		Command:     "ADD",
-		ContainerID: "12345",
+		ContainerID: "3369ae15e741d31e8616906642c3ca309291e7776e2fff3bb8d379e642e056a8",
 		Netns:       "/proc/4242/net/ns",
 		IfName:      "eth37",
 		Args:        "FOO=BAR",
@@ -97,4 +88,8 @@ func (me *TestData) CniResult() *currentcni.Result {
 			// Options:     []string{},
 		},
 	}
+}
+
+func PortReaperOpts() cniserver.PortReaperOpts {
+	return cniserver.PortReaperOpts{Interval: time.Second * 300, MinPortAge: time.Second * 300}
 }
