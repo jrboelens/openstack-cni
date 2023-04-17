@@ -112,7 +112,7 @@ func NewCniConfig(bytes []byte) (CniConfig, error) {
 	if err := json.Unmarshal(bytes, conf); err != nil {
 		return *conf, fmt.Errorf("Failed to load config data, error = %+v", err)
 	}
-	if conf.PortName != "" {
+	if conf.PortName == "" {
 		conf.PortName = Getenv("OS_PORT_NAME", "openstack-cni")
 	}
 	if conf.ProjectName == "" {
