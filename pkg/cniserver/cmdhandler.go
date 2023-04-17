@@ -134,8 +134,12 @@ func NewIpNet(cidr string) net.IPNet {
 
 // NewPortTags creates a NeutronTags including container, interface and namespace data
 func NewPortTags(cmd util.CniCommand) openstack.NeutronTags {
+	containerId := cmd.ContainerID
+	if len(containerId) > 12 {
+		containerId = containerId[0:12]
+	}
 	return openstack.NewNeutronTags(
-		fmt.Sprintf("containerid=%s", cmd.ContainerID),
+		fmt.Sprintf("containerid=%s", containerId),
 		fmt.Sprintf("ifname=%s", cmd.IfName),
 		fmt.Sprintf("netns=%s", cmd.Netns),
 	)

@@ -55,3 +55,19 @@ func Test_IpNetFromCidr(t *testing.T) {
 		Assert(t).That(ipnet.Mask, Equals("ffffff00"))
 	})
 }
+
+func Test_NewPortTags(t *testing.T) {
+	t.Run("ensure container ids are shortened to the first 12 chars", func(t *testing.T) {
+		cmd := NewTestData().CniCommand()
+		cmd.ContainerID = "12345678901234567890"
+		tags := cniserver.NewPortTags(cmd)
+		Assert(t).That(tags.Tags[0], Equals("containerid=123456789012"))
+	})
+
+	t.Run("ensure a short container id doesn't fail.. this shouldn't be possible in k8s but we'll play it safe", func(t *testing.T) {
+		cmd := NewTestData().CniCommand()
+		cmd.ContainerID = "123"
+		tags := cniserver.NewPortTags(cmd)
+		Assert(t).That(tags.Tags[0], Equals("containerid=123"))
+	})
+}

@@ -34,7 +34,7 @@ func (me *TestData) SkelArgs() *skel.CmdArgs {
 func (me *TestData) CniCommand() util.CniCommand {
 	return util.CniCommand{
 		Command:     "ADD",
-		ContainerID: "12345",
+		ContainerID: "3369ae15e741d31e8616906642c3ca309291e7776e2fff3bb8d379e642e056a8",
 		Netns:       "/proc/4242/net/ns",
 		IfName:      "eth37",
 		Args:        "FOO=BAR",

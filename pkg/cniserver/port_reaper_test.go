@@ -10,7 +10,6 @@ import (
 	. "github.com/jboelensns/openstack-cni/pkg/fixtures"
 	"github.com/jboelensns/openstack-cni/pkg/fixtures/mocks"
 	"github.com/jboelensns/openstack-cni/pkg/openstack"
-	"github.com/jboelensns/openstack-cni/pkg/util"
 
 	"github.com/jboelensns/openstack-cni/pkg/cniserver"
 	. "github.com/pepinns/go-hamcrest"
@@ -66,8 +65,8 @@ func Test_PortReaper(t *testing.T) {
 func Test_PortReaperIntegration(t *testing.T) {
 	t.Run("port reaper attempts to delete ports", func(t *testing.T) {
 		WithTestConfig(t, func(cfg TestingConfig) {
-			// create a port with a network namesapce that doesn't exist for my machine
-			cmd := util.CniCommand{StdinData: []byte("{}")}
+			// create a port with a network namespace that doesn't exist for my machine
+			cmd := NewTestData().CniCommand()
 			context := CniContextFromConfig(t, cfg, cmd)
 
 			realClient, err := openstack.NewOpenstackClient()
