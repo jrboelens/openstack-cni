@@ -11,10 +11,9 @@ import (
 )
 
 type PortReaper struct {
-	opts     PortReaperOpts
-	client   openstack.OpenstackClient
-	hostname string
-	done     func()
+	opts   PortReaperOpts
+	client openstack.OpenstackClient
+	done   func()
 }
 
 type PortReaperOpts struct {
@@ -30,10 +29,11 @@ func NewPortReaper(client openstack.OpenstackClient, opts PortReaperOpts) *PortR
 }
 
 func (me *PortReaper) Start() {
+	hostname, _ := util.GetHostname()
 	if me.done == nil {
 		me.done = Repeat(me.opts.Interval, func() {
-			if err := me.Reap(me.hostname); err != nil {
-				Log().Err(err).Str("hostname", me.hostname).Msg("error reaping ports")
+			if err := me.Reap(hostname); err != nil {
+				Log().Err(err).Str("hostname", hostname).Msg("error reaping ports")
 			}
 		})
 	}
