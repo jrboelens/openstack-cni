@@ -1,7 +1,6 @@
 package cniserver
 
 import (
-	"os"
 	"strings"
 	"time"
 
@@ -24,11 +23,9 @@ type PortReaperOpts struct {
 }
 
 func NewPortReaper(client openstack.OpenstackClient, opts PortReaperOpts) *PortReaper {
-	hostname, _ := os.Hostname()
 	return &PortReaper{
-		opts:     opts,
-		client:   client,
-		hostname: hostname,
+		opts:   opts,
+		client: client,
 	}
 }
 
@@ -96,6 +93,8 @@ func (me *PortReaper) ReapPort(port ports.Port) error {
 	return nil
 }
 
+// Repeat executes the fn function after each duration
+// Executing the returned closer function will prevent repetition from occuring
 func Repeat(d time.Duration, fn func()) (closer func()) {
 	ticker := time.NewTicker(d)
 	done := make(chan struct{})

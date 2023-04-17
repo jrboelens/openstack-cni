@@ -10,6 +10,7 @@ import (
 	. "github.com/jboelensns/openstack-cni/pkg/fixtures"
 	"github.com/jboelensns/openstack-cni/pkg/fixtures/mocks"
 	"github.com/jboelensns/openstack-cni/pkg/openstack"
+	"github.com/jboelensns/openstack-cni/pkg/util"
 
 	"github.com/jboelensns/openstack-cni/pkg/cniserver"
 	. "github.com/pepinns/go-hamcrest"
@@ -58,6 +59,39 @@ func Test_PortReaper(t *testing.T) {
 			err = reaper.ReapPort(port)
 			Assert(t).That(err, IsNil())
 			Assert(t).That(len(mock.DeletePortCalls()), Equals(1))
+		})
+	})
+}
+
+func Test_PortReaperIntegration(t *testing.T) {
+	t.Run("port reaper attempts to delete ports", func(t *testing.T) {
+		WithTestConfig(t, func(cfg TestingConfig) {
+			// create a port with a network namesapce that doesn't exist for my machine
+			cmd := util.CniCommand{StdinData: []byte("{}")}
+			context := CniContextFromConfig(t, cfg, cmd)
+
+			realClient, err := openstack.NewOpenstackClient()
+			Assert(t).That(err, IsNil())
+
+			client := openstack.NewCachedClient(realClient, time.Second*5)
+			pm := openstack.NewPortManager(client)
+			opts := openstack.SetupPortOptsFromContext(context)
+			opts.Tags = cniserver.NewPortTags(context.Command)
+
+			_, err = pm.SetupPort(opts)
+			Assert(t).That(err, IsNil(), "failed to setup port")
+
+			_, err = client.GetPortByTags(opts.Tags.AsStringSlice())
+			Assert(t).That(err, IsNil(), "failed get port by tags %s", opts.Tags.String())
+
+			// run the reaper
+			reaper := cniserver.NewPortReaper(client, cniserver.PortReaperOpts{})
+			//TODO: MOVE host name to an option rather than an argument
+			Assert(t).That(reaper.Reap(cfg.Hostname), IsNil())
+
+			// ensure the port is deleted
+			_, err = client.GetPortByTags(opts.Tags.AsStringSlice())
+			Assert(t).That(err, Equals(openstack.ErrPortNotFound))
 		})
 	})
 }

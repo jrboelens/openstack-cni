@@ -138,6 +138,7 @@ func GetHostname() (vmName string, err error) {
 	if vmName == "" {
 		vmName, err = os.Hostname()
 	}
+
 	return
 }
 
