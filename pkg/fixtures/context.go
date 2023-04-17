@@ -38,7 +38,7 @@ type TestingConfig struct {
 	NetworkName          string
 	PortName             string
 	ProjectName          string
-	SecurityGroups       []string
+	SecurityGroups       *[]string
 	SubnetName           string
 }
 
@@ -51,8 +51,11 @@ func WithTestConfig(t *testing.T, callback func(cfg TestingConfig)) {
 		NetworkName:          Getenv("OS_NETWORK_NAME", ""),
 		PortName:             Getenv("OS_PORT_NAME", "openstack-cni-test"),
 		ProjectName:          Getenv("OS_PROJECT_NAME", ""),
-		SecurityGroups:       strings.Split(Getenv("OS_SECURITY_GROUPS", ""), ";"),
 		SubnetName:           Getenv("OS_SUBNET_NAME", ""),
+	}
+	sgs := strings.Split(Getenv("OS_SECURITY_GROUPS", ""), ";")
+	if len(sgs) > 0 {
+		cfg.SecurityGroups = &sgs
 	}
 
 	if cfg.EnableOpenstackTests == "1" {

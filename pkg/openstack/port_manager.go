@@ -50,7 +50,7 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 	}
 	log.Info().Msg("found network")
 
-	if len(opts.SecurityGroups) > 0 {
+	if opts.SecurityGroups != nil && len(*opts.SecurityGroups) > 0 {
 		projectId := ""
 		// we need the projectId in order to look up the security groups
 		if len(opts.ProjectName) > 0 {
@@ -67,8 +67,8 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 		}
 
 		// if security groups were specified, look them up
-		sgIds := make([]string, len(opts.SecurityGroups), len(opts.SecurityGroups))
-		for i, sgName := range opts.SecurityGroups {
+		sgIds := make([]string, len(*opts.SecurityGroups), len(*opts.SecurityGroups))
+		for i, sgName := range *opts.SecurityGroups {
 			log.Info().Str("sgName", sgName).Msg("looking up security group")
 			sg, err := me.client.GetSecurityGroupByName(sgName, projectId)
 			if err != nil {
@@ -80,17 +80,11 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 			log.Info().Str("sgName", sgName).Msg("found security group")
 			sgIds[i] = sg.ID
 		}
-		opts.SecurityGroups = sgIds
+		opts.SecurityGroups = &sgIds
 	}
 
 	// create a port
-	t := true
-	portOpts := ports.CreateOpts{
-		NetworkID:      result.Network.ID,
-		Name:           opts.PortName,
-		AdminStateUp:   &t,
-		SecurityGroups: &opts.SecurityGroups,
-	}
+	portOpts := me.setupPortOpts(opts, result)
 
 	// optionally include the subnet when creating the port
 	if opts.SubnetName != "" {
@@ -147,6 +141,36 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 	return result, nil
 }
 
+func (me *PortManager) setupPortOpts(opts SetupPortOpts, result *SetupPortResult) ports.CreateOpts {
+	t := true
+	portOpts := ports.CreateOpts{
+		Description:    opts.PortDescription,
+		DeviceID:       opts.DeviceId,
+		DeviceOwner:    opts.DeviceOwner,
+		MACAddress:     opts.MacAddress,
+		Name:           opts.PortName,
+		NetworkID:      result.Network.ID,
+		SecurityGroups: opts.SecurityGroups,
+		TenantID:       opts.TenantId,
+		ValueSpecs:     opts.ValueSpecs,
+	}
+	if opts.AdminStateUp != nil {
+		portOpts.AdminStateUp = opts.AdminStateUp
+	} else {
+		portOpts.AdminStateUp = &t
+	}
+	if opts.AllowedAddressPairs != nil {
+		pairs := make([]ports.AddressPair, len(opts.AllowedAddressPairs), len(opts.AllowedAddressPairs))
+		for i := range opts.AllowedAddressPairs {
+			pairs = append(pairs, ports.AddressPair{
+				IPAddress:  opts.AllowedAddressPairs[i].IpAddress,
+				MACAddress: opts.AllowedAddressPairs[i].MacAddress,
+			})
+		}
+	}
+	return portOpts
+}
+
 func (me *PortManager) TeardownPort(opts TearDownPortOpts) error {
 	log := Log().With().Str("command", "DEL").Str("hostname", opts.Hostname).Str("tags", opts.Tags.String()).Logger()
 
@@ -190,24 +214,40 @@ func (me *PortManager) TeardownPort(opts TearDownPortOpts) error {
 }
 
 type SetupPortOpts struct {
-	Hostname       string
-	NetworkName    string
-	PortName       string
-	ProjectName    string
-	SecurityGroups []string
-	SubnetName     string
-	SkipPortAttach bool
-	Tags           NeutronTags
+	AdminStateUp        *bool
+	AllowedAddressPairs []util.AddressPair
+	DeviceId            string
+	DeviceOwner         string
+	Hostname            string
+	MacAddress          string
+	NetworkName         string
+	PortDescription     string
+	PortName            string
+	ProjectName         string
+	SecurityGroups      *[]string
+	SubnetName          string
+	SkipPortAttach      bool
+	Tags                NeutronTags
+	TenantId            string
+	ValueSpecs          *map[string]string
 }
 
 func SetupPortOptsFromContext(context util.CniContext) SetupPortOpts {
 	return SetupPortOpts{
-		Hostname:       context.Hostname,
-		NetworkName:    context.CniConfig.Network,
-		PortName:       context.CniConfig.PortName,
-		ProjectName:    context.CniConfig.ProjectName,
-		SecurityGroups: context.CniConfig.SecurityGroups,
-		SubnetName:     context.CniConfig.SubnetName,
+		AdminStateUp:        context.CniConfig.AdminStateUp,
+		AllowedAddressPairs: context.CniConfig.AllowedAddressPairs,
+		DeviceId:            context.CniConfig.DeviceId,
+		DeviceOwner:         context.CniConfig.DeviceOwner,
+		Hostname:            context.Hostname,
+		MacAddress:          context.CniConfig.MacAddress,
+		NetworkName:         context.CniConfig.Network,
+		PortDescription:     context.CniConfig.PortDescription,
+		PortName:            context.CniConfig.PortName,
+		ProjectName:         context.CniConfig.ProjectName,
+		SecurityGroups:      context.CniConfig.SecurityGroups,
+		SubnetName:          context.CniConfig.SubnetName,
+		TenantId:            context.CniConfig.TenantId,
+		ValueSpecs:          context.CniConfig.ValueSpecs,
 	}
 }
 

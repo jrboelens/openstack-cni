@@ -36,3 +36,11 @@ func DirExists(dir string) bool {
 	}
 	return info.IsDir()
 }
+
+func IsNilOrZero[T any](v *T) bool {
+	return v == nil || v == new(T)
+}
+
+func HasValue[T any](v *T) bool {
+	return v != nil && v != new(T)
+}
