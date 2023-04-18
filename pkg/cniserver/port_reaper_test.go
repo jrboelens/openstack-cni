@@ -51,10 +51,22 @@ func Test_PortReaper(t *testing.T) {
 		})
 	})
 
+	t.Run("will not reap a port without our tags", func(t *testing.T) {
+		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
+			WithPortReaper(t, client, func(reaper *cniserver.PortReaper) {
+				port := ports.Port{CreatedAt: time.Now()}
+				mock.DeletePortFunc = func(portId string) error { return nil }
+				err = reaper.ReapPort(port)
+				Assert(t).That(err, IsNil())
+				Assert(t).That(len(mock.DeletePortCalls()), Equals(0))
+			})
+		})
+	})
+
 	t.Run("will reap an old port", func(t *testing.T) {
 		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
 			WithPortReaper(t, client, func(reaper *cniserver.PortReaper) {
-				port := ports.Port{CreatedAt: time.Now().Add(-(time.Second * 6000))}
+				port := ports.Port{Tags: []string{"netns=/proc/4242/ns"}, CreatedAt: time.Now().Add(-(time.Second * 6000))}
 				mock.DeletePortFunc = func(portId string) error { return nil }
 				err = reaper.ReapPort(port)
 				Assert(t).That(err, IsNil())

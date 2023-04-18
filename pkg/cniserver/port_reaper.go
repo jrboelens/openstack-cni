@@ -74,10 +74,15 @@ func (me *PortReaper) ReapPort(port ports.Port) error {
 	}
 
 	netNs := ""
+	foundNs := false
 	for _, tag := range port.Tags {
 		if strings.HasPrefix(tag, "netns=") {
+			foundNs = true
 			netNs = strings.Split(tag, "=")[1]
 		}
+	}
+	if !foundNs {
+		return nil
 	}
 
 	if !util.DirExists(netNs) {
