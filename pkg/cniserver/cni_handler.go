@@ -17,19 +17,23 @@ var CommandCheck = "CHECK"
 
 // CniHandler handles /cni related requests
 type CniHandler struct {
-	Cni CommandHandler
+	Cni     CommandHandler
+	Metrics *Metrics
 }
 
 // HandleRequest validates and handlers /cni related requests
 func (me *CniHandler) HandleRequest(w http.ResponseWriter, r *http.Request) {
+	me.Metrics.cniRequestCount.Inc()
 	cmd := readBodyIntoJson[util.CniCommand](w, r)
 	if cmd == nil {
+		me.Metrics.cniRequestInvalidCount.Inc()
 		return
 	}
 
 	if err := me.validateCommand(*cmd); err != nil {
 		Log().Error().Str("cmd", cmd.String()).AnErr("err", err).Msg("failed to validate request")
 		w.WriteHeader(http.StatusBadRequest)
+		me.Metrics.cniRequestInvalidCount.Inc()
 		return
 	}
 
@@ -42,27 +46,39 @@ func (me *CniHandler) HandleCommand(w http.ResponseWriter, cmd util.CniCommand) 
 	case CommandAdd:
 		result, err := me.Cni.Add(cmd)
 		if err != nil {
+			me.Metrics.cniAddFailureCount.Inc()
 			AddStrings(Log().Error(), cmd.ForLog()).Err(err).Msg("failed to handle /cni ADD")
 			cerr := NewErrorResult(err, "error during ADD", fmt.Sprintf("command=%s", cmd))
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(cerr)
 			return
 		} else {
+			me.Metrics.cniAddSuccessCount.Inc()
 			w.Write(asJson(result))
 		}
 		return
 	case CommandDel:
 		if err := me.Cni.Del(cmd); err != nil {
+			me.Metrics.cniDelFailureCount.Inc()
 			AddStrings(Log().Error(), cmd.ForLog()).Err(err).Msg("failed to handle /cni DEL")
 			cerr := NewErrorResult(err, "error during DEL", fmt.Sprintf("containerid=%s ifname=%s", cmd.ContainerID, cmd.IfName))
 			w.WriteHeader(http.StatusInternalServerError)
 			w.Write(cerr)
 			return
 		}
+		me.Metrics.cniDelSuccessCount.Inc()
 		w.WriteHeader(http.StatusNoContent)
 		return
 	case CommandCheck:
-		me.Cni.Check(cmd)
+		if err := me.Cni.Check(cmd); err != nil {
+			me.Metrics.cniCheckFailureCount.Inc()
+			AddStrings(Log().Error(), cmd.ForLog()).Err(err).Msg("failed to handle /cni CHECK")
+			cerr := NewErrorResult(err, "error during CHECK", fmt.Sprintf("containerid=%s ifname=%s", cmd.ContainerID, cmd.IfName))
+			w.WriteHeader(http.StatusInternalServerError)
+			w.Write(cerr)
+			return
+		}
+		me.Metrics.cniCheckSuccessCount.Inc()
 		return
 	}
 	w.WriteHeader(http.StatusBadRequest)

@@ -14,6 +14,7 @@ import (
 	"github.com/jboelensns/openstack-cni/pkg/fixtures/mocks"
 	"github.com/jboelensns/openstack-cni/pkg/openstack"
 	"github.com/jboelensns/openstack-cni/pkg/util"
+	"github.com/prometheus/client_golang/prometheus"
 
 	. "github.com/pepinns/go-hamcrest"
 )
@@ -94,23 +95,16 @@ func (me *ServerFixture) Openstack() openstack.OpenstackClient {
 func (me *ServerFixture) Start(t *testing.T) {
 	t.Helper()
 
-	deps, err := cniserver.NewBuilder().
+	me.cfg = cniserver.NewConfig()
+	me.cfg.ListenAddr = me.GetListenAddr(me.GetPort())
+
+	deps, err := cniserver.NewBuilder(me.cfg).
 		WithCniHandler(me.cniHandler).
 		WithOpenstackClient(me.openstack).
 		Build()
 	Assert(t).That(err, IsNil())
 
-	me.cfg = cniserver.NewConfig()
-	me.cfg.ListenAddr = me.GetListenAddr(me.GetPort())
-
-	app, err := cniserver.NewApp(
-		me.cfg,
-		cniserver.NewRestServer(me.cfg, deps),
-		cniserver.NewPortReaper(deps.OpenstackClient(), cniserver.PortReaperOpts{
-			Interval:   me.cfg.ReapInterval,
-			MinPortAge: me.cfg.MinPortAge,
-		}),
-	)
+	app, err := cniserver.NewApp(me.cfg, deps.RestServer(), deps.PortReaper())
 	Assert(t).That(err, IsNil())
 	me.app = app
 	go func() {
@@ -174,6 +168,10 @@ func (me *ServerFixture) GetAvailablePort(addrs ...string) int {
 		panic(lastErr)
 	}
 	return 0
+}
+
+func Metrics() *cniserver.Metrics {
+	return cniserver.NewMetrics(prometheus.NewRegistry())
 }
 
 func CniContextFromConfig(t *testing.T, cfg TestingConfig, cmd util.CniCommand) util.CniContext {

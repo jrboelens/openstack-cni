@@ -6,8 +6,6 @@ import (
 	"os"
 	"os/signal"
 
-	"github.com/go-chi/chi"
-	"github.com/go-chi/chi/middleware"
 	"github.com/go-chi/httplog"
 	"github.com/hashicorp/go-multierror"
 	. "github.com/jboelensns/openstack-cni/pkg/logging"
@@ -15,9 +13,10 @@ import (
 
 // App represents the application running the http server
 type App struct {
-	config Config
-	server *http.Server
-	reaper *PortReaper
+	config  Config
+	server  *http.Server
+	reaper  *PortReaper
+	metrics *Metrics
 }
 
 // NewApp creates a new App from configuration
@@ -57,20 +56,13 @@ func BuildApp() (*App, error) {
 	SetupLogging("openstack-cni-daemon", httplog.DefaultOptions)
 	Log().Info().Msg("preparing http server")
 
-	deps, err := NewBuilder().Build()
+	config := NewConfig()
+	deps, err := NewBuilder(config).Build()
 	if err != nil {
 		Error("failed to build dependencies", err)
 		return nil, err
 	}
-	config := NewConfig()
-	opts := PortReaperOpts{
-		Interval:   config.ReapInterval,
-		MinPortAge: config.MinPortAge,
-	}
-	app, err := NewApp(
-		config,
-		NewRestServer(config, deps),
-		NewPortReaper(deps.OpenstackClient(), opts))
+	app, err := NewApp(config, deps.RestServer(), deps.PortReaper())
 	if err != nil {
 		Log().Error().Str("addr", app.config.ListenAddr).AnErr("err", err).Msg("failed to initialize server")
 		return nil, err
@@ -121,19 +113,4 @@ func HandleSignals(ctx context.Context, callbacks ...func(context.Context) error
 		return errs
 	}
 	return nil
-}
-
-func NewRestServer(config Config, deps *Deps) *http.Server {
-	router := chi.NewRouter()
-	router.Use(middleware.Logger)
-	router.Get("/health", (NewHealthHandler(deps.OpenstackClient())).HandleRequest)
-	router.Get("/ping", PingHandler)
-	router.Post("/cni", (&CniHandler{deps.CniHandler()}).HandleRequest)
-
-	return &http.Server{
-		Addr:         config.ListenAddr,
-		Handler:      router,
-		ReadTimeout:  config.ReadTimeout,
-		WriteTimeout: config.WriteTimeout,
-	}
 }

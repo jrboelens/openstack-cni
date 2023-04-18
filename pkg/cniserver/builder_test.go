@@ -11,7 +11,8 @@ import (
 func Test_builder(t *testing.T) {
 	WithTestConfig(t, func(cfg TestingConfig) {
 		t.Run("build creates proper dependencies by default", func(t *testing.T) {
-			deps, err := cniserver.NewBuilder().Build()
+			config := cniserver.NewConfig()
+			deps, err := cniserver.NewBuilder(config).Build()
 			Assert(t).That(err, IsNil())
 			Assert(t).That(deps, Not(IsNil()))
 			Assert(t).That(deps.CniHandler(), Not(IsNil()))

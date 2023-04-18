@@ -98,6 +98,27 @@ func WithOpenstackClient(t *testing.T, callback func(client openstack.OpenstackC
 	callback(client)
 }
 
+func WithPortReaper(t *testing.T, client openstack.OpenstackClient, callback func(reaper *cniserver.PortReaper)) {
+	t.Helper()
+	reaper := &cniserver.PortReaper{
+		Opts:     PortReaperOpts(),
+		OsClient: client,
+		Metrics:  Metrics(),
+	}
+	callback(reaper)
+}
+
+func WithPortReaperWithNoMinPortAge(t *testing.T, client openstack.OpenstackClient, callback func(reaper *cniserver.PortReaper)) {
+	t.Helper()
+	reaper := &cniserver.PortReaper{
+		Opts:     PortReaperOpts(),
+		OsClient: client,
+		Metrics:  Metrics(),
+	}
+	reaper.Opts.MinPortAge = 0
+	callback(reaper)
+}
+
 func Getenv(key, def string) string {
 	v := os.Getenv(key)
 	if v == "" {

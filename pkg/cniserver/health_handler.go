@@ -8,12 +8,7 @@ import (
 
 // HealthHandler handles all /health related requests
 type HealthHandler struct {
-	osClient openstack.OpenstackClient
-}
-
-// NewHealthHandler creates a new HealthHandler
-func NewHealthHandler(osApi openstack.OpenstackClient) *HealthHandler {
-	return &HealthHandler{osApi}
+	OsClient openstack.OpenstackClient
 }
 
 // HandleRequest executes health checks and returns the results
@@ -44,7 +39,7 @@ func (me HealthHandler) checkOpenstack() HealthResponseCheck {
 		IsHealthy: true,
 		Error:     "",
 	}
-	_, err := me.osClient.GetServerByName("serverthatdoesntexist")
+	_, err := me.OsClient.GetServerByName("serverthatdoesntexist")
 	if err == openstack.ErrServerNotFound {
 		return resp
 	}

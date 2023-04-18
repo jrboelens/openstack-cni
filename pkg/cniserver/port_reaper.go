@@ -11,9 +11,10 @@ import (
 )
 
 type PortReaper struct {
-	opts   PortReaperOpts
-	client openstack.OpenstackClient
-	done   func()
+	Opts     PortReaperOpts
+	OsClient openstack.OpenstackClient
+	Metrics  *Metrics
+	done     func()
 }
 
 type PortReaperOpts struct {
@@ -21,17 +22,10 @@ type PortReaperOpts struct {
 	MinPortAge time.Duration
 }
 
-func NewPortReaper(client openstack.OpenstackClient, opts PortReaperOpts) *PortReaper {
-	return &PortReaper{
-		opts:   opts,
-		client: client,
-	}
-}
-
 func (me *PortReaper) Start() {
 	hostname, _ := util.GetHostname()
 	if me.done == nil {
-		me.done = Repeat(me.opts.Interval, func() {
+		me.done = Repeat(me.Opts.Interval, func() {
 			if err := me.Reap(hostname); err != nil {
 				Log().Err(err).Str("hostname", hostname).Msg("error reaping ports")
 			}
@@ -49,13 +43,13 @@ func (me *PortReaper) Stop() {
 func (me *PortReaper) Reap(hostname string) error {
 	Log().Info().Msg("reaping ports")
 	// lookup the server
-	server, err := me.client.GetServerByName(hostname)
+	server, err := me.OsClient.GetServerByName(hostname)
 	if err != nil {
 		return err
 	}
 
 	// list all ports for a host
-	ports, err := me.client.GetPortsByDeviceId(server.ID)
+	ports, err := me.OsClient.GetPortsByDeviceId(server.ID)
 	if err != nil {
 		return err
 	}
@@ -63,7 +57,10 @@ func (me *PortReaper) Reap(hostname string) error {
 	for _, port := range ports {
 		if err := me.ReapPort(port); err != nil {
 			Log().Err(err).Str("portId", port.ID).Msg("failed to reap port")
+			me.Metrics.reapFailureCount.Inc()
+			continue
 		}
+		me.Metrics.reapSuccessCount.Inc()
 	}
 
 	return nil
@@ -72,7 +69,7 @@ func (me *PortReaper) Reap(hostname string) error {
 // Reap deletes any ports whose network namespaces no longer exist
 func (me *PortReaper) ReapPort(port ports.Port) error {
 	// skip ports that were created recently
-	if time.Now().Sub(port.CreatedAt) <= me.opts.MinPortAge {
+	if time.Now().Sub(port.CreatedAt) <= me.Opts.MinPortAge {
 		return nil
 	}
 
@@ -85,7 +82,7 @@ func (me *PortReaper) ReapPort(port ports.Port) error {
 
 	if !util.DirExists(netNs) {
 		Log().Info().Str("portId", port.ID).Msg("attempting to reap port")
-		if err := me.client.DeletePort(port.ID); err != nil {
+		if err := me.OsClient.DeletePort(port.ID); err != nil {
 			return err
 		}
 		Log().Info().Str("portId", port.ID).Msg("successfully reaped port")
