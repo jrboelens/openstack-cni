@@ -142,5 +142,6 @@ func NewPortTags(cmd util.CniCommand) openstack.NeutronTags {
 		fmt.Sprintf("containerid=%s", containerId),
 		fmt.Sprintf("ifname=%s", cmd.IfName),
 		fmt.Sprintf("netns=%s", cmd.Netns),
+		fmt.Sprintf("openstack-cni=true"),
 	)
 }

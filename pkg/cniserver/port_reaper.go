@@ -75,13 +75,17 @@ func (me *PortReaper) ReapPort(port ports.Port) error {
 
 	netNs := ""
 	foundNs := false
+	foundOpenstackCni := false
 	for _, tag := range port.Tags {
 		if strings.HasPrefix(tag, "netns=") {
 			foundNs = true
 			netNs = strings.Split(tag, "=")[1]
 		}
+		if tag == "openstack-cni=true" {
+			foundOpenstackCni = true
+		}
 	}
-	if !foundNs {
+	if !foundNs || !foundOpenstackCni {
 		return nil
 	}
 

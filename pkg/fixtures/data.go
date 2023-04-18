@@ -93,3 +93,7 @@ func (me *TestData) CniResult() *currentcni.Result {
 func PortReaperOpts() cniserver.PortReaperOpts {
 	return cniserver.PortReaperOpts{Interval: time.Second * 300, MinPortAge: time.Second * 300}
 }
+
+func NeutronTags() []string {
+	return []string{"foo=bar", "openstack-cni=true", "netns=/proc/1234/ns"}
+}
