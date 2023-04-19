@@ -171,7 +171,7 @@ func (me *ServerFixture) GetAvailablePort(addrs ...string) int {
 }
 
 func Metrics() *cniserver.Metrics {
-	return cniserver.NewMetrics(prometheus.NewRegistry())
+	return cniserver.NewMetrics(prometheus.NewRegistry(), func() float64 {return 0})
 }
 
 func CniContextFromConfig(t *testing.T, cfg TestingConfig, cmd util.CniCommand) util.CniContext {

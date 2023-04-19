@@ -5,7 +5,8 @@ import (
 )
 
 type Metrics struct {
-	registry *prometheus.Registry
+	PortCountFunc func() float64
+	registry      *prometheus.Registry
 
 	cniRequestCount        prometheus.Counter
 	cniRequestInvalidCount prometheus.Counter
@@ -20,9 +21,9 @@ type Metrics struct {
 	portTotal              prometheus.GaugeFunc
 }
 
-func NewMetrics(registry *prometheus.Registry) *Metrics {
+func NewMetrics(registry *prometheus.Registry, portCountFunc func() float64) *Metrics {
 	// Request
-	metrics := &Metrics{registry: registry}
+	metrics := &Metrics{registry: registry, PortCountFunc: portCountFunc}
 	metrics.cniRequestCount = prometheus.NewCounter(
 		prometheus.CounterOpts{
 			Name: "cni_request_count",
@@ -111,12 +112,9 @@ func NewMetrics(registry *prometheus.Registry) *Metrics {
 			Name: "port_total",
 			Help: "number of active ports",
 		},
-		func() float64 {
-			//TODO: <.> wire this up to openstack.client.getportsbyname (openstack-cni) and count them
-			// we can rely on the cache to make sure this doesn't destroy the neutron API
-			return 0
-		},
+		metrics.PortCountFunc,
 	)
+	metrics.registry.MustRegister(metrics.portTotal)
 
 	return metrics
 }

@@ -68,24 +68,22 @@ func (me *PortReaper) Reap(hostname string) error {
 
 // Reap deletes any ports whose network namespaces no longer exist
 func (me *PortReaper) ReapPort(port ports.Port) error {
+	// skip ports that aren't tagged with our special identifying tag
+	if !HasOpenstackCniTag(port.Tags) {
+		return nil
+	}
 	// skip ports that were created recently
 	if time.Now().Sub(port.CreatedAt) <= me.Opts.MinPortAge {
 		return nil
 	}
 
 	netNs := ""
-	foundNs := false
-	foundOpenstackCni := false
 	for _, tag := range port.Tags {
 		if strings.HasPrefix(tag, "netns=") {
-			foundNs = true
 			netNs = strings.Split(tag, "=")[1]
 		}
-		if tag == "openstack-cni=true" {
-			foundOpenstackCni = true
-		}
 	}
-	if !foundNs || !foundOpenstackCni {
+	if netNs == "" {
 		return nil
 	}
 

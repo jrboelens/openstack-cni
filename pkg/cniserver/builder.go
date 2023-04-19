@@ -47,12 +47,13 @@ func (me *Deps) RestServer() *http.Server {
 
 // Builder provides the ability to produce Deps instances using the builder pattern
 type Builder struct {
-	config     Config
-	cniHandler CommandHandler
-	osClient   openstack.OpenstackClient
-	metrics    *Metrics
-	restServer *http.Server
-	portReaper *PortReaper
+	config      Config
+	cniHandler  CommandHandler
+	osClient    openstack.OpenstackClient
+	metrics     *Metrics
+	restServer  *http.Server
+	portReaper  *PortReaper
+	portCounter *PortCounter
 }
 
 // NewBuilder creates a new Builder
@@ -113,9 +114,13 @@ func (me *Builder) Build() (*Deps, error) {
 		}
 	}
 
+	if me.portCounter == nil {
+		me.portCounter = &PortCounter{me.osClient}
+	}
+
 	if me.metrics == nil {
 		registry := prometheus.NewRegistry()
-		me.metrics = NewMetrics(registry)
+		me.metrics = NewMetrics(registry, me.portCounter.Count)
 	}
 
 	if me.portReaper == nil {
