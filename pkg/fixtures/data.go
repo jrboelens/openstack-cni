@@ -91,7 +91,11 @@ func (me *TestData) CniResult() *currentcni.Result {
 }
 
 func PortReaperOpts() cniserver.PortReaperOpts {
-	return cniserver.PortReaperOpts{Interval: time.Second * 300, MinPortAge: time.Second * 300}
+	return cniserver.PortReaperOpts{
+		Interval:       time.Second * 300,
+		MinPortAge:     time.Second * 300,
+		MountedProcDir: "/host/proc",
+	}
 }
 
 func NeutronTags() []string {

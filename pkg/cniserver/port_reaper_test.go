@@ -2,6 +2,7 @@ package cniserver_test
 
 import (
 	"os"
+	"path"
 	"testing"
 	"time"
 
@@ -30,9 +31,13 @@ func Test_PortReaper(t *testing.T) {
 				}
 				mock.DeletePortFunc = func(portId string) error { return nil }
 
-				err = reaper.Reap(hostname)
-				Assert(t).That(err, IsNil())
-				Assert(t).That(len(mock.DeletePortCalls()), Equals(1))
+				WithTempDir(t, func(dir string) {
+					reaper.Opts.MountedProcDir = path.Join(dir, "proc")
+					os.MkdirAll(reaper.Opts.MountedProcDir, 0755)
+					err = reaper.Reap(hostname)
+					Assert(t).That(err, IsNil())
+					Assert(t).That(len(mock.DeletePortCalls()), Equals(1))
+				})
 			})
 		})
 	})
@@ -61,6 +66,23 @@ func Test_PortReaper(t *testing.T) {
 		})
 	})
 
+	t.Run("will not reap a port without /proc mounted at /host/proc", func(t *testing.T) {
+		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
+			WithPortReaper(t, client, func(reaper *cniserver.PortReaper) {
+				mock.GetServerByNameFunc = func(name string) (*servers.Server, error) {
+					return nil, nil
+				}
+				WithTempDir(t, func(dir string) {
+					// this directory won't exist
+					reaper.Opts.MountedProcDir = path.Join(dir, "proc")
+					err = reaper.Reap(hostname)
+					Assert(t).That(err, IsNil())
+					Assert(t).That(len(mock.DeletePortCalls()), Equals(0))
+				})
+			})
+		})
+	})
+
 	t.Run("will reap an old port", func(t *testing.T) {
 		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
 			WithPortReaper(t, client, func(reaper *cniserver.PortReaper) {
@@ -84,22 +106,24 @@ func Test_PortReaperIntegration(t *testing.T) {
 				cachedClient := openstack.NewCachedClient(client, time.Second*5)
 
 				WithPortReaperWithNoMinPortAge(t, cachedClient, func(reaper *cniserver.PortReaper) {
-					pm := openstack.NewPortManager(cachedClient)
-					opts := openstack.SetupPortOptsFromContext(context)
-					opts.Tags = cniserver.NewPortTags(context.Command)
+					WithMountedProcDir(t, reaper, func() {
+						pm := openstack.NewPortManager(cachedClient)
+						opts := openstack.SetupPortOptsFromContext(context)
+						opts.Tags = cniserver.NewPortTags(context.Command)
 
-					_, err := pm.SetupPort(opts)
-					Assert(t).That(err, IsNil(), "failed to setup port")
+						_, err := pm.SetupPort(opts)
+						Assert(t).That(err, IsNil(), "failed to setup port")
 
-					_, err = cachedClient.GetPortByTags(opts.Tags.AsStringSlice())
-					Assert(t).That(err, IsNil(), "failed get port by tags %s", opts.Tags.String())
+						_, err = cachedClient.GetPortByTags(opts.Tags.AsStringSlice())
+						Assert(t).That(err, IsNil(), "failed get port by tags %s", opts.Tags.String())
 
-					// run the reaper
-					Assert(t).That(reaper.Reap(cfg.Hostname), IsNil())
+						// run the reaper
+						Assert(t).That(reaper.Reap(cfg.Hostname), IsNil())
 
-					// ensure the port is deleted
-					_, err = cachedClient.GetPortByTags(opts.Tags.AsStringSlice())
-					Assert(t).That(err, Equals(openstack.ErrPortNotFound))
+						// ensure the port is deleted
+						_, err = cachedClient.GetPortByTags(opts.Tags.AsStringSlice())
+						Assert(t).That(err, Equals(openstack.ErrPortNotFound))
+					})
 				})
 			})
 		})

@@ -2,6 +2,7 @@ package fixtures
 
 import (
 	"os"
+	"path"
 	"strings"
 	"testing"
 	"time"
@@ -117,6 +118,15 @@ func WithPortReaperWithNoMinPortAge(t *testing.T, client openstack.OpenstackClie
 	}
 	reaper.Opts.MinPortAge = 0
 	callback(reaper)
+}
+
+func WithMountedProcDir(t *testing.T, reaper *cniserver.PortReaper, callback func()) {
+	t.Helper()
+	WithTempDir(t, func(dir string) {
+		reaper.Opts.MountedProcDir = path.Join(dir, "proc")
+		Assert(t).That(os.MkdirAll(reaper.Opts.MountedProcDir, 0755), IsNil())
+		callback()
+	})
 }
 
 func Getenv(key, def string) string {

@@ -39,6 +39,8 @@ spec:
           name: cnibin
         - mountPath: /host/etc/cni
           name: cnietc
+        - mountPath: /host/proc
+          name: cniproc
       volumes:
       - hostPath:
           path: /opt/cni/bin
@@ -46,3 +48,6 @@ spec:
       - hostPath:
           path: /etc/cni
         name: cnietc
+      - hostPath:
+          path: /proc
+        name: cniproc

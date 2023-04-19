@@ -18,8 +18,9 @@ type PortReaper struct {
 }
 
 type PortReaperOpts struct {
-	Interval   time.Duration
-	MinPortAge time.Duration
+	Interval       time.Duration
+	MinPortAge     time.Duration
+	MountedProcDir string
 }
 
 func (me *PortReaper) Start() {
@@ -42,6 +43,14 @@ func (me *PortReaper) Stop() {
 // Reap deletes any ports whose network namespaces no longer exist
 func (me *PortReaper) Reap(hostname string) error {
 	Log().Info().Msg("reaping ports")
+
+	// make sure that /host/proc was mounted
+	if !util.DirExists(me.Opts.MountedProcDir) {
+		Log().Warn().Str("dir", me.Opts.MountedProcDir).
+			Msg("skipping port reaping. could not find mounted proc directory")
+		return nil
+	}
+
 	// lookup the server
 	server, err := me.OsClient.GetServerByName(hostname)
 	if err != nil {
@@ -60,7 +69,6 @@ func (me *PortReaper) Reap(hostname string) error {
 			me.Metrics.reapFailureCount.Inc()
 			continue
 		}
-		me.Metrics.reapSuccessCount.Inc()
 	}
 
 	return nil
@@ -86,6 +94,7 @@ func (me *PortReaper) ReapPort(port ports.Port) error {
 	if netNs == "" {
 		return nil
 	}
+	netNs = strings.Replace(netNs, "/proc", me.Opts.MountedProcDir, 1)
 
 	if !util.DirExists(netNs) {
 		Log().Info().Str("portId", port.ID).Msg("attempting to reap port")
@@ -94,6 +103,7 @@ func (me *PortReaper) ReapPort(port ports.Port) error {
 		}
 		Log().Info().Str("portId", port.ID).Msg("successfully reaped port")
 	}
+	me.Metrics.reapSuccessCount.Inc()
 	return nil
 }
 
