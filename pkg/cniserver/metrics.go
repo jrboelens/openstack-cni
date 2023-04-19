@@ -93,14 +93,14 @@ func NewMetrics(registry *prometheus.Registry, portCountFunc func() float64) *Me
 	// Reaper
 	metrics.reapSuccessCount = prometheus.NewCounter(
 		prometheus.CounterOpts{
-			Name: "reaped_port_success_count",
+			Name: "cni_reaped_port_success_count",
 			Help: "total count of successfully reaped ports",
 		},
 	)
 	metrics.registry.MustRegister(metrics.reapSuccessCount)
 	metrics.reapFailureCount = prometheus.NewCounter(
 		prometheus.CounterOpts{
-			Name: "reaped_port_failure_count",
+			Name: "cni_reaped_port_failure_count",
 			Help: "total count of failed port reapings",
 		},
 	)
@@ -109,7 +109,7 @@ func NewMetrics(registry *prometheus.Registry, portCountFunc func() float64) *Me
 	// Ports
 	metrics.portTotal = prometheus.NewGaugeFunc(
 		prometheus.GaugeOpts{
-			Name: "port_total",
+			Name: "cni_port_total",
 			Help: "number of active ports",
 		},
 		metrics.PortCountFunc,
