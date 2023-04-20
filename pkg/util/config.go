@@ -158,7 +158,11 @@ func GetHostname() (vmName string, err error) {
 
 func LoadEnvConfig(filenames ...string) error {
 	for _, file := range filenames {
-		if FileExists(file) {
+		exists, err := FileExists(file)
+		if err != nil {
+			return err
+		}
+		if exists {
 			if err := godotenv.Load(file); err != nil {
 				return err
 			}

@@ -21,18 +21,28 @@ func Getenv(key, def string) string {
 	return v
 }
 
-func FileExists(filename string) bool {
-	info, err := os.Stat(filename)
-	if os.IsNotExist(err) {
-		return false
+func fileEntryExists(path string, isDir bool) (bool, error) {
+	info, err := os.Stat(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return false, nil
+		}
+		if os.IsPermission(err) {
+			return true, nil
+		}
+		return false, err
 	}
-	return !info.IsDir()
+
+	if isDir {
+		return info.IsDir(), nil
+	}
+	return !info.IsDir(), nil
 }
 
-func DirExists(dir string) bool {
-	info, err := os.Stat(dir)
-	if os.IsNotExist(err) {
-		return false
-	}
-	return info.IsDir()
+func FileExists(file string) (bool, error) {
+	return fileEntryExists(file, false)
+}
+
+func DirExists(dir string) (bool, error) {
+	return fileEntryExists(dir, true)
 }

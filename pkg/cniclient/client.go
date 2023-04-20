@@ -21,7 +21,11 @@ func New(opts *ClientOpts) (*Client, error) {
 
 	// attempt to read config file
 	configFile := util.Getenv("CNI_CONFIG_FILE", "/etc/cni/net.d/openstack-cni.conf")
-	if util.FileExists(configFile) {
+	exists, err := util.FileExists(configFile)
+	if err != nil {
+		return nil, err
+	}
+	if exists {
 		if err := godotenv.Load(configFile); err != nil {
 			return nil, err
 		}

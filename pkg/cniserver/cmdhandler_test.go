@@ -25,7 +25,7 @@ func Test_CreateResultFromPortResult(t *testing.T) {
 func Test_CmdHandler(t *testing.T) {
 	t.Run("can add and delete using a handler", func(t *testing.T) {
 		WithTestConfig(t, func(cfg TestingConfig) {
-			deps, err := cniserver.NewBuilder().Build()
+			deps, err := cniserver.NewBuilder(cniserver.NewConfig()).Build()
 			Assert(t).That(err, IsNil())
 
 			cmd := NewTestData().CniCommand()
