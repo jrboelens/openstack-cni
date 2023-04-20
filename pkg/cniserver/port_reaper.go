@@ -110,8 +110,8 @@ func (me *PortReaper) ReapPort(port ports.Port) error {
 			return err
 		}
 		Log().Info().Str("portId", port.ID).Msg("successfully reaped port")
+		me.Metrics.reapSuccessCount.Inc()
 	}
-	me.Metrics.reapSuccessCount.Inc()
 	return nil
 }
 

@@ -5,15 +5,16 @@ metadata:
   name: openstack-cni
   namespace: {{ .Values.cni.namespace }}
   labels:
-    app: openstack-cni
+    app.kubernetes.io/instance: openstack-cni
+    app.kubernetes.io/name: openstack-cni
 spec:
   selector:
     matchLabels:
-      name: openstack-cni
+      app: openstack-cni
   template:
     metadata:
       labels:
-        name: openstack-cni
+        app: openstack-cni
     spec:
       tolerations:
         - operator: Exists
@@ -23,6 +24,10 @@ spec:
       - name: openstack-cni
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: Always
+        ports:
+        - containerPort: 4242
+          name: openstack-cni
+          protocol: TCP
         resources:
           limits:
             memory: 200Mi
