@@ -2,31 +2,30 @@
 apiVersion: apps/v1
 kind: DaemonSet
 metadata:
-  name: openstack-cni
+  name: {{ include "openstack-cni.fullname" . }}
   namespace: {{ .Values.cni.namespace }}
   labels:
-    app.kubernetes.io/instance: openstack-cni
-    app.kubernetes.io/name: openstack-cni
+    {{- include "openstack-cni.labels" . | nindent 4 }}
 spec:
   selector:
     matchLabels:
-      app: openstack-cni
+      {{- include "openstack-cni.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        app: openstack-cni
+        {{- include "openstack-cni.selectorLabels" . | nindent 8 }}
     spec:
       tolerations:
         - operator: Exists
           effect: NoSchedule
       hostNetwork: true
       containers:
-      - name: openstack-cni
+      - name: {{ .Chart.Name }}
         image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
         imagePullPolicy: Always
         ports:
         - containerPort: 4242
-          name: openstack-cni
+          name: {{ .Chart.Name }}
           protocol: TCP
         resources:
           limits:
