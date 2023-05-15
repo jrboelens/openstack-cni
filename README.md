@@ -1,6 +1,10 @@
 # Overview
 
-`openstack-cni` is a [CNI](https://github.com/containernetworking/cni) plugin designed to allow OpenStack Neutron ports to be used directory by Pod containers.
+`openstack-cni` is a [CNI](https://github.com/containernetworking/cni) plugin that provides the ability to dynamically configure Openstack Neutron Ports and attach them to Pod containers. 
+
+Configuration is achieved by created `NetworkAttachmentDefinitions` and referencing them with Pod Annotations.
+
+Such configuration allows the implementer to configure a port for any OpenStack network and attach it to any Pod.
 
 
 These [sequence diagrams](docs/diagrams.md) show the workflow and relationship between `kubelet`, `multus`, `openstack-cni` and `openstack-cni-daemon`.
