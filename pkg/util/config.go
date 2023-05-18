@@ -118,6 +118,9 @@ func NewCniConfig(bytes []byte) (CniConfig, error) {
 	if conf.ProjectName == "" {
 		conf.ProjectName = Getenv("OS_PROJECT_NAME", "")
 	}
+	if conf.DeviceOwner == "" {
+		conf.DeviceOwner = Getenv("CNI_PORT_DEVICE_OWNER", "")
+	}
 
 	return *conf, nil
 }

@@ -9,3 +9,4 @@ data:
   OS_PROJECT_NAME: {{ .Values.openstack.project_name }}
   OS_DOMAIN_NAME: {{ .Values.openstack.domain_name | default "default" }}
   CNI_API_URL: {{ .Values.cni.cni_api_url | default "http://127.0.0.1:4242" }}
+  CNI_PORT_DEVICE_OWNER: {{ .Values.cni.port_device_owner | default "compute:nova" }}
