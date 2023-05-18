@@ -1,6 +1,7 @@
 package cniserver
 
 import (
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi"
@@ -98,7 +99,7 @@ func (me *Builder) Build() (*Deps, error) {
 		var err error
 		me.osClient, err = openstack.NewOpenstackClient()
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to build openstack client err=%w", err)
 		}
 	}
 
@@ -110,7 +111,7 @@ func (me *Builder) Build() (*Deps, error) {
 		pm := openstack.NewPortManager(me.osClient)
 		me.cniHandler, err = NewCniCommandHandler(pm), nil
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to build cni command handler err=%w", err)
 		}
 	}
 

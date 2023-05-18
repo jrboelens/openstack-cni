@@ -24,7 +24,7 @@ func Log() *zerolog.Logger {
 }
 
 func Error(msg string, err error) {
-	logger.Error().AnErr("err", err).Msg("failed to run server")
+	logger.Error().AnErr("err", err).Msg(msg)
 }
 
 func AddStrings(event *zerolog.Event, strs [][]string) *zerolog.Event {
