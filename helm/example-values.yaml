@@ -5,6 +5,7 @@ image:
 cni:
   cni_api_url: http://127.0.0.1:4242
   namespace: NAMESPACE
+  port_device_owner: "compute:nova"
 
 openstack:
   auth_url: https://keystone.example.com:5000/v3
