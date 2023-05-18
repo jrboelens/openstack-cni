@@ -2,6 +2,11 @@
 set -x
 set -e
 
+if [[ "$SKIP_ENTRY" = "1" ]]; then
+  /usr/bin/openstack-cni-daemon
+  exit 0
+fi
+
 # Set known directories.
 HOST_CNI_BIN_DIR="/host/opt/cni/bin"
 HOST_CNI_ETC_DIR="/host/etc/cni/net.d"
