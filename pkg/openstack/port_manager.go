@@ -160,12 +160,12 @@ func (me *PortManager) setupPortOpts(opts SetupPortOpts, result *SetupPortResult
 		portOpts.AdminStateUp = &t
 	}
 	if opts.AllowedAddressPairs != nil {
-		pairs := make([]ports.AddressPair, len(opts.AllowedAddressPairs), len(opts.AllowedAddressPairs))
+		portOpts.AllowedAddressPairs  = make([]ports.AddressPair, len(opts.AllowedAddressPairs), len(opts.AllowedAddressPairs))
 		for i := range opts.AllowedAddressPairs {
-			pairs = append(pairs, ports.AddressPair{
+			portOpts.AllowedAddressPairs[i] = ports.AddressPair{
 				IPAddress:  opts.AllowedAddressPairs[i].IpAddress,
 				MACAddress: opts.AllowedAddressPairs[i].MacAddress,
-			})
+			}
 		}
 	}
 	return portOpts
