@@ -55,6 +55,11 @@ func SetupAndTeardownPort(t *testing.T, context util.CniContext, client openstac
 	results, err := pm.SetupPort(opts)
 	Assert(t).That(err, IsNil(), "failed to setup port")
 
+	if len(context.CniConfig.AllowedAddressPairs) > 0 {
+		Assert(t).That(results.Port.AllowedAddressPairs, HasLen(1))
+		Assert(t).That(results.Port.AllowedAddressPairs[0].IPAddress, Equals("1.1.1.1"))
+	}
+
 	_, err = client.GetPortByTags(opts.Tags.AsStringSlice())
 	Assert(t).That(err, IsNil(), "failed get port by tags %s", opts.Tags.String())
 
