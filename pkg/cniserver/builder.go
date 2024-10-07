@@ -107,12 +107,8 @@ func (me *Builder) Build() (*Deps, error) {
 
 	// build the default cni handler if we don't have one
 	if me.cniHandler == nil {
-		var err error
 		pm := openstack.NewPortManager(me.osClient)
-		me.cniHandler, err = NewCniCommandHandler(pm), nil
-		if err != nil {
-			return nil, fmt.Errorf("failed to build cni command handler err=%w", err)
-		}
+		me.cniHandler = NewCniCommandHandler(pm)
 	}
 
 	if me.portCounter == nil {
