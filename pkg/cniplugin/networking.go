@@ -38,53 +38,53 @@ func (me *networking) Configure(namespace string, iface *NetworkInterface) error
 	// Find the link by interface name
 	link, err := me.nl.LinkByName(iface.Name)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to LinkByName ns=%s iface=%s dest_iface=%s addr=%s e=%w", namespace, iface.Name, iface.DestName, iface.Address, err)
 	}
 
 	// Find the destination namespace's fd by its path
 	nsFd, err := me.nl.GetNetNsIdByPath(namespace)
 	if err != nil {
-		return err
+		return fmt.Errorf("netlink failed to GetNetNsIdByPath ns=%s iface=%s dest_iface=%s addr=%s e=%w", namespace, iface.Name, iface.DestName, iface.Address, err)
 	}
 
 	// Move the link into the desination namespace
 	if err := me.nl.LinkSetNsFd(link, nsFd); err != nil {
-		return err
+		return fmt.Errorf("netlink failed to LinkSetNsFd ns=%s iface=%s dest_iface=%s addr=%s e=%w", namespace, iface.Name, iface.DestName, iface.Address, err)
 	}
 
 	// Save our namespace so we can flip back to it once we're done
 	oldNs, err := netns.Get()
 	if err != nil {
-		return err
+		return fmt.Errorf("netlink failed to Get namespace ns=%s iface=%s dest_iface=%s addr=%s e=%w", namespace, iface.Name, iface.DestName, iface.Address, err)
 	}
 	defer oldNs.Close()
 
 	// set ourselves into the destination namespace
 	if err := netns.Set(netns.NsHandle(nsFd)); err != nil {
-		return err
+		return fmt.Errorf("netlink failed to Set namespace ns=%s iface=%s dest_iface=%s addr=%s e=%w", namespace, iface.Name, iface.DestName, iface.Address, err)
 	}
 	// when we're done we need to enter our original namespace
 	defer netns.Set(oldNs)
 
 	// bring the interface down before we configure it
 	if err := me.nl.LinkSetDown(link); err != nil {
-		return err
+		return fmt.Errorf("netlink failed to LinkSetDown ns=%s iface=%s dest_iface=%s addr=%s e=%w", namespace, iface.Name, iface.DestName, iface.Address, err)
 	}
 
 	// set the name of the link
 	if err := me.nl.LinkSetName(link, iface.DestName); err != nil {
-		return err
+		return fmt.Errorf("netlink failed to LinkSetName ns=%s iface=%s dest_iface=%s addr=%s e=%w", namespace, iface.Name, iface.DestName, iface.Address, err)
 	}
 
 	// set the IP on the interface
 	ipAddr := &netlink.Addr{IPNet: iface.Address, Label: ""}
 	if err := me.nl.AddrAdd(link, ipAddr); err != nil {
-		return err
+		return fmt.Errorf("netlink failed to AddrAdd ns=%s iface=%s dest_iface=%s addr=%s e=%w", namespace, iface.Name, iface.DestName, iface.Address, err)
 	}
 
 	// bring the interface up
 	if err := me.nl.LinkSetUp(link); err != nil {
-		return err
+		return fmt.Errorf("netlink failed to LinkSetup ns=%s iface=%s dest_iface=%s addr=%s e=%w", namespace, iface.Name, iface.DestName, iface.Address, err)
 	}
 	return nil
 }
@@ -115,7 +115,7 @@ func (me *Cni) ConfigureInterface(cmd util.CniCommand, result *currentcni.Result
 func GetIfaceNameByMac(mac string) (string, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("error finding interface for mac=%s e=%w", mac, err)
 	}
 
 	for _, iface := range ifaces {

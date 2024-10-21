@@ -2,6 +2,7 @@ package cniplugin_test
 
 import (
 	"net"
+	"os"
 	"testing"
 
 	currentcni "github.com/containernetworking/cni/pkg/types/040"
@@ -54,7 +55,7 @@ func Test_Cni(t *testing.T) {
 	})
 
 	t.Run("can execute a delete", func(t *testing.T) {
-		logging.SetupLogging("openstack-cni-daemon", httplog.DefaultOptions)
+		logging.SetupLogging("openstack-cni-daemon", httplog.DefaultOptions, os.Stderr)
 		cniHandler := &mocks.CommandHandlerMock{}
 		networking := &mocks.NetworkingMock{}
 		sopts := &ServerOpts{CniHandler: cniHandler, Networking: networking}

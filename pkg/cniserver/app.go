@@ -53,7 +53,7 @@ func (me *App) Shutdown(ctx context.Context) error {
 }
 
 func BuildApp() (*App, error) {
-	SetupLogging("openstack-cni-daemon", httplog.DefaultOptions)
+	SetupLogging("openstack-cni-daemon", httplog.DefaultOptions, os.Stderr)
 	Log().Info().Msg("preparing http server")
 
 	config := NewConfig()

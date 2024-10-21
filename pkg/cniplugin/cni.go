@@ -1,6 +1,8 @@
 package cniplugin
 
 import (
+	"fmt"
+
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
 	currentcni "github.com/containernetworking/cni/pkg/types/040"
@@ -73,13 +75,25 @@ func (me *Cni) Del(args *skel.CmdArgs) error {
 func (me *Cni) Invoke() error {
 	err := skel.PluginMainWithError(
 		func(args *skel.CmdArgs) error {
-			return me.Add(args)
+			err := me.Add(args)
+			if err != nil {
+				logging.Error(fmt.Sprintf("error invoking CNI ADD for args=%s", args), err)
+			}
+			return err
 		},
 		func(args *skel.CmdArgs) error {
-			return me.Check(args)
+			err := me.Check(args)
+			if err != nil {
+				logging.Error(fmt.Sprintf("error invoking CNI CHECK for args=%s", args), err)
+			}
+			return err
 		},
 		func(args *skel.CmdArgs) error {
-			return me.Del(args)
+			err := me.Del(args)
+			if err != nil {
+				logging.Error(fmt.Sprintf("error invoking CNI DEL for args=%s", args), err)
+			}
+			return err
 		},
 		cniversion.All,
 		"openstack CNI plugin that plumbs neutron ports into containers")
