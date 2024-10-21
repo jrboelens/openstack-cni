@@ -40,9 +40,11 @@ func (me *PortCounter) Count() float64 {
 	return count
 }
 
+const OPENSTACK_CNI_TAG = "openstack-cni=true"
+
 func HasOpenstackCniTag(tags []string) bool {
 	for _, tag := range tags {
-		if tag == "openstack-cni=true" {
+		if tag == OPENSTACK_CNI_TAG {
 			return true
 		}
 	}

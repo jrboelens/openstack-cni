@@ -35,6 +35,8 @@ func NewNetworking(nl util.NetlinkWrapper) *networking {
 
 // Configure moves an existing network interface into a new network namespace with the provided IP address and name
 func (me *networking) Configure(namespace string, iface *NetworkInterface) error {
+	// TODO: Drop in debugging
+
 	// Find the link by interface name
 	link, err := me.nl.LinkByName(iface.Name)
 	if err != nil {

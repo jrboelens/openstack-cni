@@ -119,6 +119,12 @@ func (me *CachedClient) GetPortByTags(tags []string) (*ports.Port, error) {
 	})
 }
 
+func (me *CachedClient) GetPortsByTags(tags []string) ([]ports.Port, error) {
+	return getValue[[]ports.Port](me.cash, makeKey("GetPortsByTags", strings.Join(tags, ",")), me.Expiration, func() (any, error) {
+		return me.OpenstackClient.GetPortsByTags(tags)
+	})
+}
+
 func (me *CachedClient) GetProjectByName(name string) (*projects.Project, error) {
 	return getPtrValue[projects.Project](me.cash, makeKey("GetProjectByName", name), me.Expiration, func() (any, error) {
 		return me.OpenstackClient.GetProjectByName(name)

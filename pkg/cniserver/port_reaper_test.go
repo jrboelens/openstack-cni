@@ -26,10 +26,14 @@ func Test_PortReaper(t *testing.T) {
 				mock.GetServerByNameFunc = func(name string) (*servers.Server, error) {
 					return &servers.Server{ID: serverId}, nil
 				}
-				mock.GetPortsByDeviceIdFunc = func(deviceId string) ([]ports.Port, error) {
+				// mock.GetPortsByDeviceIdFunc = func(deviceId string) ([]ports.Port, error) {
+				// 	return []ports.Port{{Tags: NeutronTags()}}, nil
+				// }
+				mock.DeletePortFunc = func(portId string) error { return nil }
+
+				mock.GetPortsByTagsFunc = func(tags []string) ([]ports.Port, error) {
 					return []ports.Port{{Tags: NeutronTags()}}, nil
 				}
-				mock.DeletePortFunc = func(portId string) error { return nil }
 
 				WithTempDir(t, func(dir string) {
 					reaper.Opts.MountedProcDir = path.Join(dir, "proc")
@@ -121,7 +125,49 @@ func Test_PortReaperIntegration(t *testing.T) {
 						Assert(t).That(reaper.Reap(cfg.Hostname), IsNil())
 
 						// ensure the port is deleted
-						_, err = cachedClient.GetPortByTags(opts.Tags.AsStringSlice())
+						_, err = client.GetPortByTags(opts.Tags.AsStringSlice())
+						Assert(t).That(err, Equals(openstack.ErrPortNotFound))
+					})
+				})
+			})
+		})
+	})
+
+	t.Run("port reaper doesn't delete ports when SkipReaper=true", func(t *testing.T) {
+		WithTestConfig(t, func(cfg TestingConfig) {
+			WithOpenstackClient(t, func(client openstack.OpenstackClient) {
+				// create a port with a network namespace that doesn't exist for my machine
+				cmd := NewTestData().CniCommand()
+				context := CniContextFromConfig(t, cfg, cmd)
+				cachedClient := openstack.NewCachedClient(client, time.Second*5)
+
+				WithPortReaperWithNoMinPortAge(t, cachedClient, func(reaper *cniserver.PortReaper) {
+					WithMountedProcDir(t, reaper, func() {
+						pm := openstack.NewPortManager(cachedClient)
+						opts := openstack.SetupPortOptsFromContext(context)
+						opts.Tags = cniserver.NewPortTags(context.Command)
+						reaper.Opts.SkipDelete = true
+
+						_, err := pm.SetupPort(opts)
+						Assert(t).That(err, IsNil(), "failed to setup port")
+
+						p1, err := cachedClient.GetPortByTags(opts.Tags.AsStringSlice())
+						Assert(t).That(err, IsNil(), "failed get port by tags %s", opts.Tags.String())
+
+						// run the reaper
+						Assert(t).That(reaper.Reap(cfg.Hostname), IsNil())
+
+						// ensure the port is still present
+						p2, err := client.GetPortByTags(opts.Tags.AsStringSlice())
+						Assert(t).That(err, IsNil())
+						Assert(t).That(p1.ID, Equals(p2.ID))
+
+						// now delete it
+						reaper.Opts.SkipDelete = false
+						Assert(t).That(reaper.Reap(cfg.Hostname), IsNil())
+
+						// ensure it's gone
+						_, err = client.GetPortByTags(opts.Tags.AsStringSlice())
 						Assert(t).That(err, Equals(openstack.ErrPortNotFound))
 					})
 				})

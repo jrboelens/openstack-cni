@@ -1,6 +1,7 @@
 package cniserver
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -21,6 +22,7 @@ type PortReaperOpts struct {
 	Interval       time.Duration
 	MinPortAge     time.Duration
 	MountedProcDir string
+	SkipDelete     bool
 }
 
 func (me *PortReaper) Start() {
@@ -55,19 +57,18 @@ func (me *PortReaper) Reap(hostname string) error {
 		return nil
 	}
 
-	// lookup the server
-	server, err := me.OsClient.GetServerByName(hostname)
-	if err != nil {
-		return err
-	}
-
-	// list all ports for a host
-	ports, err := me.OsClient.GetPortsByDeviceId(server.ID)
+	// list all openstack cni ports for the host using tags
+	ports, err := me.OsClient.GetPortsByTags(NewPortKeyTags())
 	if err != nil {
 		return err
 	}
 
 	for _, port := range ports {
+		if me.Opts.SkipDelete {
+			Log().Info().Str("portId", port.ID).Msg("reaping disabled, skipping port")
+			continue
+		}
+		Log().Error().Str("port", fmt.Sprintf("%v", port)).Msg("would've reaped port")
 		if err := me.ReapPort(port); err != nil {
 			Log().Err(err).Str("portId", port.ID).Msg("failed to reap port")
 			me.Metrics.reapFailureCount.Inc()
