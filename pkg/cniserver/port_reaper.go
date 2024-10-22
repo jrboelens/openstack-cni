@@ -90,6 +90,11 @@ func (me *PortReaper) ReapPort(port ports.Port) error {
 		return nil
 	}
 
+	// only delete DOWN ports
+	if port.Status != "DOWN" {
+		return nil
+	}
+
 	netNs := ""
 	for _, tag := range port.Tags {
 		if strings.HasPrefix(tag, "netns=") {

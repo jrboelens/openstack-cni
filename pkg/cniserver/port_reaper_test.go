@@ -26,13 +26,9 @@ func Test_PortReaper(t *testing.T) {
 				mock.GetServerByNameFunc = func(name string) (*servers.Server, error) {
 					return &servers.Server{ID: serverId}, nil
 				}
-				// mock.GetPortsByDeviceIdFunc = func(deviceId string) ([]ports.Port, error) {
-				// 	return []ports.Port{{Tags: NeutronTags()}}, nil
-				// }
 				mock.DeletePortFunc = func(portId string) error { return nil }
-
 				mock.GetPortsByTagsFunc = func(tags []string) ([]ports.Port, error) {
-					return []ports.Port{{Tags: NeutronTags()}}, nil
+					return []ports.Port{{Status: "DOWN", Tags: NeutronTags()}}, nil
 				}
 
 				WithTempDir(t, func(dir string) {
@@ -90,7 +86,7 @@ func Test_PortReaper(t *testing.T) {
 	t.Run("will reap an old port", func(t *testing.T) {
 		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
 			WithPortReaper(t, client, func(reaper *cniserver.PortReaper) {
-				port := ports.Port{Tags: NeutronTags(), CreatedAt: time.Now().Add(-(time.Second * 6000))}
+				port := ports.Port{Status: "DOWN", Tags: NeutronTags(), CreatedAt: time.Now().Add(-(time.Second * 6000))}
 				mock.DeletePortFunc = func(portId string) error { return nil }
 				err = reaper.ReapPort(port)
 				Assert(t).That(err, IsNil())
@@ -114,6 +110,7 @@ func Test_PortReaperIntegration(t *testing.T) {
 						pm := openstack.NewPortManager(cachedClient)
 						opts := openstack.SetupPortOptsFromContext(context)
 						opts.Tags = cniserver.NewPortTags(context.Command)
+						opts.SkipPortAttach = true
 
 						_, err := pm.SetupPort(opts)
 						Assert(t).That(err, IsNil(), "failed to setup port")
@@ -148,7 +145,7 @@ func Test_PortReaperIntegration(t *testing.T) {
 						opts.Tags = cniserver.NewPortTags(context.Command)
 						reaper.Opts.SkipDelete = true
 
-						_, err := pm.SetupPort(opts)
+						setupResult, err := pm.SetupPort(opts)
 						Assert(t).That(err, IsNil(), "failed to setup port")
 
 						p1, err := cachedClient.GetPortByTags(opts.Tags.AsStringSlice())
@@ -162,12 +159,16 @@ func Test_PortReaperIntegration(t *testing.T) {
 						Assert(t).That(err, IsNil())
 						Assert(t).That(p1.ID, Equals(p2.ID))
 
-						// now delete it
+						// detach the port so it will be reaped
+						cachedClient.DetachPort(setupResult.Port.ID, setupResult.Server.ID)
+
+						// now reap it
 						reaper.Opts.SkipDelete = false
 						Assert(t).That(reaper.Reap(cfg.Hostname), IsNil())
 
 						// ensure it's gone
-						_, err = client.GetPortByTags(opts.Tags.AsStringSlice())
+						p, err := client.GetPortByTags(opts.Tags.AsStringSlice())
+						Assert(t).That(p, Equals(nil))
 						Assert(t).That(err, Equals(openstack.ErrPortNotFound))
 					})
 				})

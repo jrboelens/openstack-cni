@@ -36,12 +36,14 @@ fi
 echo "Using Api URL $CNI_API_URL"
 echo "CNI_API_URL=$CNI_API_URL" > "$HOST_CNI_ETC_DIR/openstack-cni.conf"
 
+## disable this after testing
 # allow the binary to be injected from the host's filesystem
 # this allows for testing without shipping new images
-OVERRIDE_BINARY=$HOST_CNI_BIN_DIR/openstack-cni-daemon
-if [ -f "$OVERRIDE_BINARY" ]; then
-  echo "Found override.  Using $OVERRIDE_BINARY"
-  cp $OVERRIDE_BINARY /usr/bin/openstack-cni-daemon
+##
+OVERRIDE_DAEMON_BINARY=$HOST_CNI_BIN_DIR/openstack-cni-daemon
+if [ -f "$OVERRIDE_DAEMON_BINARY" ]; then
+  echo "Found override.  Using $OVERRIDE_DAEMON_BINARY"
+  cp $OVERRIDE_DAEMON_BINARY /usr/bin/openstack-cni-daemon
 fi
 
 /usr/bin/openstack-cni-daemon
