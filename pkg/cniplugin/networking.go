@@ -99,8 +99,8 @@ func (me *networking) Configure(namespace string, iface *NetworkInterface) error
 	// set the IP on the interface
 	logging.Log().Info().Str("addr", iface.Address.IP.String()).Msg("calling netlink.AddrAdd")
 	ipAddr := &netlink.Addr{IPNet: iface.Address, Label: ""}
-	if err := me.nl.AddrAdd(link, ipAddr); err != nil {
-		return fmt.Errorf("netlink failed to AddrAdd ns=%s iface=%s dest_iface=%s addr=%s e=%w", namespace, iface.Name, iface.DestName, iface.Address, err)
+	if err := me.nl.AddrReplace(link, ipAddr); err != nil {
+		return fmt.Errorf("netlink failed to AddrReplace ns=%s iface=%s dest_iface=%s addr=%s e=%w", namespace, iface.Name, iface.DestName, iface.Address, err)
 	}
 
 	// bring the interface up
