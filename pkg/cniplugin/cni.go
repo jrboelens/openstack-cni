@@ -29,6 +29,7 @@ func NewCni(client *cniclient.Client, nw Networking) *Cni {
 
 // Add handles ADD CNI commands
 func (me *Cni) Add(args *skel.CmdArgs) error {
+	logging.Log().Info().Str("container_id", args.ContainerID).Str("ns", args.Netns).Str("iface", args.IfName).Str("args", args.Args).Str("path", args.Path).Msg("received ADD")
 	var netConf types.NetConf
 	if err := util.FromJson(args.StdinData, &netConf); err != nil {
 		return err
@@ -59,6 +60,7 @@ func (me *Cni) Add(args *skel.CmdArgs) error {
 
 // Check handles CHECK CNI commands
 func (me *Cni) Check(args *skel.CmdArgs) error {
+	logging.Log().Info().Str("container_id", args.ContainerID).Str("ns", args.Netns).Str("iface", args.IfName).Str("args", args.Args).Str("path", args.Path).Msg("received CHECK")
 	cmd := cniCommandFromSkelArgs(cniserver.CommandCheck, args)
 	_, err := me.client.HandleResponse(me.client.CniCommand(cmd))
 	return err
@@ -66,6 +68,7 @@ func (me *Cni) Check(args *skel.CmdArgs) error {
 
 // Del handles DEL CNI commands
 func (me *Cni) Del(args *skel.CmdArgs) error {
+	logging.Log().Info().Str("container_id", args.ContainerID).Str("ns", args.Netns).Str("iface", args.IfName).Str("args", args.Args).Str("path", args.Path).Msg("received DEL")
 	cmd := cniCommandFromSkelArgs(cniserver.CommandDel, args)
 	_, err := me.client.HandleResponse(me.client.CniCommand(cmd))
 	return err

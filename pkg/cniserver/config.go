@@ -28,7 +28,7 @@ func NewConfig() Config {
 	}
 
 	return Config{
-		ListenAddr:   fmt.Sprintf(":%s", url.Port()),
+		ListenAddr:   url.Host,
 		ReadTimeout:  getEnvDuration("CNI_READ_TIMEOUT", "10s"),
 		WriteTimeout: getEnvDuration("CNI_WRITE_TIMEOUT", "10s"),
 		ReapInterval: getEnvDuration("CNI_REAP_INTERVAL", "300s"),

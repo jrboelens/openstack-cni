@@ -1,7 +1,6 @@
 package cniserver
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
@@ -68,7 +67,6 @@ func (me *PortReaper) Reap(hostname string) error {
 			Log().Info().Str("portId", port.ID).Msg("reaping disabled, skipping port")
 			continue
 		}
-		Log().Error().Str("port", fmt.Sprintf("%v", port)).Msg("would've reaped port")
 		if err := me.ReapPort(port); err != nil {
 			Log().Err(err).Str("portId", port.ID).Msg("failed to reap port")
 			me.Metrics.reapFailureCount.Inc()

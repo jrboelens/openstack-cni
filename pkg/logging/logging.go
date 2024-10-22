@@ -16,7 +16,7 @@ func SetupLogging(name string, opts httplog.Options, output io.Writer) zerolog.L
 	defer locker.Unlock()
 	logger = httplog.NewLogger(name, opts)
 	if output != nil {
-		logger = logger.Output(output)
+		logger = logger.Output(zerolog.ConsoleWriter{Out: output, TimeFormat: opts.TimeFieldFormat})
 	}
 	return logger
 }
