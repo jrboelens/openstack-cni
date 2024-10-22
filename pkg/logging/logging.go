@@ -22,8 +22,8 @@ func SetupLogging(name string, opts httplog.Options, output io.Writer) zerolog.L
 }
 
 func Log() *zerolog.Logger {
-	locker.RLock()
-	defer locker.RUnlock()
+	locker.Lock()
+	defer locker.Unlock()
 	return &logger
 }
 

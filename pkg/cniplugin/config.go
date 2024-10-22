@@ -29,7 +29,7 @@ func LoadConfig() (Config, error) {
 		}
 	}
 
-	timeout, err := time.ParseDuration(fmt.Sprintf("%ss", util.Getenv("CNI_REQUEST_TIMEOUT", "60")))
+	timeout, err := time.ParseDuration(fmt.Sprintf("%ss", util.Getenv("CNI_REQUEST_TIMEOUT", "120")))
 	if err != nil {
 		return config, err
 	}

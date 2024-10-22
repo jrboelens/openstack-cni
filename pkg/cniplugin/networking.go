@@ -49,7 +49,7 @@ func (me *networking) Configure(namespace string, iface *NetworkInterface) error
 		logging.Log().Info().Str("type", link.Type()).
 			Str("iface", linkAttrs.Name).
 			Int("index", linkAttrs.Index).
-			Str("mac", string(linkAttrs.HardwareAddr)).
+			Str("mac", linkAttrs.HardwareAddr.String()).
 			Msg("found link")
 	} else {
 		logging.Log().Info().Str("type", link.Type()).Str("attrs", "nil").Msg("found link")
