@@ -29,9 +29,9 @@ else
     exit 1
 fi
 
-="$HOST_CNI_ETC_DIR/openstack-cni.conf"
+CNI_CONF_FILE="$HOST_CNI_ETC_DIR/openstack-cni.conf"
 # Write out config that the CNI needs to run in kubelet's context
-if [ -f "$CNI_CONF_FILE" ]; then
+if [ ! -f "$CNI_CONF_FILE" ]; then
   if [ "$CNI_API_URL" = "" ]; then
     CNI_API_URL="http://127.0.0.1:4242"
   fi
@@ -50,10 +50,10 @@ fi
 # allow the binary to be injected from the host's filesystem
 # this allows for testing without shipping new images
 ##
-OVERRIDE_DAEMON_BINARY=$HOST_CNI_BIN_DIR/openstack-cni-daemon
-if [ -f "$OVERRIDE_DAEMON_BINARY" ]; then
-  echo "Found override.  Using $OVERRIDE_DAEMON_BINARY"
-  cp $OVERRIDE_DAEMON_BINARY /usr/bin/openstack-cni-daemon
-fi
+# OVERRIDE_DAEMON_BINARY=$HOST_CNI_BIN_DIR/openstack-cni-daemon
+# if [ -f "$OVERRIDE_DAEMON_BINARY" ]; then
+#   echo "Found override.  Using $OVERRIDE_DAEMON_BINARY"
+#   cp $OVERRIDE_DAEMON_BINARY /usr/bin/openstack-cni-daemon
+# fi
 
 /usr/bin/openstack-cni-daemon

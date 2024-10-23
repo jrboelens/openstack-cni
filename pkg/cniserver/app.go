@@ -5,9 +5,11 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"syscall"
 
 	"github.com/go-chi/httplog"
 	"github.com/hashicorp/go-multierror"
+	"github.com/jboelensns/openstack-cni/pkg/logging"
 	. "github.com/jboelensns/openstack-cni/pkg/logging"
 )
 
@@ -98,10 +100,11 @@ func PingHandler(w http.ResponseWriter, r *http.Request) {
 
 // HandleSignals handlers SIGINT and SIGINT signals
 func HandleSignals(ctx context.Context, callbacks ...func(context.Context) error) error {
-	sigint := make(chan os.Signal, 1)
-	signal.Notify(sigint, os.Interrupt)
-	<-sigint
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	<-sigChan
 
+	logging.Log().Info().Msg("Received shutdown signal")
 	var errs *multierror.Error
 	for _, callback := range callbacks {
 		err := callback(ctx)
