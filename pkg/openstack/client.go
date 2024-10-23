@@ -27,6 +27,7 @@ type OpenstackClient interface {
 	GetPort(portId string) (*ports.Port, error)
 	GetPortsByDeviceId(deviceId string) ([]ports.Port, error)
 	GetPortByTags(tags []string) (*ports.Port, error)
+	GetPortsByTags(tags []string) ([]ports.Port, error)
 	GetProjectByName(name string) (*projects.Project, error)
 	GetServerByName(name string) (*servers.Server, error)
 	GetSecurityGroupByName(name, projectId string) (*groups.SecGroup, error)
@@ -145,6 +146,13 @@ func (me *openstackClient) GetPortByTags(tags []string) (*ports.Port, error) {
 	return me.getPort(listOpts)
 }
 
+// GetPortsByTags returns a single port based on matching tags
+func (me *openstackClient) GetPortsByTags(tags []string) ([]ports.Port, error) {
+	tagsStr := strings.Join(tags, ",")
+	listOpts := ports.ListOpts{Tags: tagsStr}
+	return me.getPorts(listOpts)
+}
+
 // GetPortsByDeviceId returns all ports based device id (server id)
 func (me *openstackClient) GetPortsByDeviceId(deviceId string) ([]ports.Port, error) {
 	listOpts := ports.ListOpts{DeviceID: deviceId}
@@ -156,21 +164,24 @@ func (me *openstackClient) GetPortsByDeviceId(deviceId string) ([]ports.Port, er
 	return ports.ExtractPorts(allPages)
 }
 
-func (me *openstackClient) getPort(listOpts ports.ListOpts) (*ports.Port, error) {
+func (me *openstackClient) getPorts(listOpts ports.ListOpts) ([]ports.Port, error) {
 	allPages, err := ports.List(me.clients.NetworkClient, listOpts).AllPages()
 	if err != nil {
 		return nil, err
 	}
+	return ports.ExtractPorts(allPages)
+}
 
-	allPorts, err := ports.ExtractPorts(allPages)
+func (me *openstackClient) getPort(listOpts ports.ListOpts) (*ports.Port, error) {
+	ports, err := me.getPorts(listOpts)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(allPorts) == 0 {
+	if len(ports) == 0 {
 		return nil, ErrPortNotFound
 	}
-	return &allPorts[0], nil
+	return &ports[0], nil
 }
 
 var ErrProjectNotFound = fmt.Errorf("project not found")

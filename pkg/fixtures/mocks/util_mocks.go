@@ -22,6 +22,9 @@ var _ util.NetlinkWrapper = &NetlinkWrapperMock{}
 //			AddrAddFunc: func(link netlink.Link, addr *netlink.Addr) error {
 //				panic("mock out the AddrAdd method")
 //			},
+//			AddrReplaceFunc: func(link netlink.Link, addr *netlink.Addr) error {
+//				panic("mock out the AddrReplace method")
+//			},
 //			GetNetNsIdByPathFunc: func(namespace string) (int, error) {
 //				panic("mock out the GetNetNsIdByPath method")
 //			},
@@ -53,6 +56,9 @@ type NetlinkWrapperMock struct {
 	// AddrAddFunc mocks the AddrAdd method.
 	AddrAddFunc func(link netlink.Link, addr *netlink.Addr) error
 
+	// AddrReplaceFunc mocks the AddrReplace method.
+	AddrReplaceFunc func(link netlink.Link, addr *netlink.Addr) error
+
 	// GetNetNsIdByPathFunc mocks the GetNetNsIdByPath method.
 	GetNetNsIdByPathFunc func(namespace string) (int, error)
 
@@ -78,6 +84,13 @@ type NetlinkWrapperMock struct {
 	calls struct {
 		// AddrAdd holds details about calls to the AddrAdd method.
 		AddrAdd []struct {
+			// Link is the link argument value.
+			Link netlink.Link
+			// Addr is the addr argument value.
+			Addr *netlink.Addr
+		}
+		// AddrReplace holds details about calls to the AddrReplace method.
+		AddrReplace []struct {
 			// Link is the link argument value.
 			Link netlink.Link
 			// Addr is the addr argument value.
@@ -124,6 +137,7 @@ type NetlinkWrapperMock struct {
 		}
 	}
 	lockAddrAdd          sync.RWMutex
+	lockAddrReplace      sync.RWMutex
 	lockGetNetNsIdByPath sync.RWMutex
 	lockGetNetNsIdByPid  sync.RWMutex
 	lockLinkByName       sync.RWMutex
@@ -166,6 +180,42 @@ func (mock *NetlinkWrapperMock) AddrAddCalls() []struct {
 	mock.lockAddrAdd.RLock()
 	calls = mock.calls.AddrAdd
 	mock.lockAddrAdd.RUnlock()
+	return calls
+}
+
+// AddrReplace calls AddrReplaceFunc.
+func (mock *NetlinkWrapperMock) AddrReplace(link netlink.Link, addr *netlink.Addr) error {
+	if mock.AddrReplaceFunc == nil {
+		panic("NetlinkWrapperMock.AddrReplaceFunc: method is nil but NetlinkWrapper.AddrReplace was just called")
+	}
+	callInfo := struct {
+		Link netlink.Link
+		Addr *netlink.Addr
+	}{
+		Link: link,
+		Addr: addr,
+	}
+	mock.lockAddrReplace.Lock()
+	mock.calls.AddrReplace = append(mock.calls.AddrReplace, callInfo)
+	mock.lockAddrReplace.Unlock()
+	return mock.AddrReplaceFunc(link, addr)
+}
+
+// AddrReplaceCalls gets all the calls that were made to AddrReplace.
+// Check the length with:
+//
+//	len(mockedNetlinkWrapper.AddrReplaceCalls())
+func (mock *NetlinkWrapperMock) AddrReplaceCalls() []struct {
+	Link netlink.Link
+	Addr *netlink.Addr
+} {
+	var calls []struct {
+		Link netlink.Link
+		Addr *netlink.Addr
+	}
+	mock.lockAddrReplace.RLock()
+	calls = mock.calls.AddrReplace
+	mock.lockAddrReplace.RUnlock()
 	return calls
 }
 

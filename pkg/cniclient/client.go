@@ -40,6 +40,7 @@ func New(opts *ClientOpts) (*Client, error) {
 		Opts: ClientOpts{
 			BaseUrl:        util.Getenv("CNI_API_URL", "http://127.0.0.1:4242"),
 			RequestTimeout: timeout,
+			LogFileName:    util.Getenv("CNI_LOG_FILE_NAME", ""),
 		},
 	}, nil
 }
@@ -127,4 +128,5 @@ func (me *Client) handleResponse(resp *http.Response) ([]byte, error) {
 type ClientOpts struct {
 	BaseUrl        string
 	RequestTimeout time.Duration
+	LogFileName    string
 }

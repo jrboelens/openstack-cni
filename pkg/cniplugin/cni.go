@@ -1,6 +1,8 @@
 package cniplugin
 
 import (
+	"fmt"
+
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
 	currentcni "github.com/containernetworking/cni/pkg/types/040"
@@ -9,6 +11,7 @@ import (
 	"github.com/jboelensns/openstack-cni/pkg/cniserver"
 	"github.com/jboelensns/openstack-cni/pkg/logging"
 	"github.com/jboelensns/openstack-cni/pkg/util"
+	"github.com/rs/zerolog"
 )
 
 // Cni provides methods with the ability accept CNI spec data, make requests to the openstack-cni-daemon and return the results
@@ -69,17 +72,46 @@ func (me *Cni) Del(args *skel.CmdArgs) error {
 	return err
 }
 
+func argLogContext(l zerolog.Context, args *skel.CmdArgs) zerolog.Logger {
+	return l.Str("container_id", args.ContainerID).Str("ns", args.Netns).Str("iface", args.IfName).Str("args", args.Args).Str("path", args.Path).Logger()
+}
+
 // Invoke invokes the CNI plugin skeletons using its own methods
 func (me *Cni) Invoke() error {
 	err := skel.PluginMainWithError(
 		func(args *skel.CmdArgs) error {
-			return me.Add(args)
+			log := argLogContext(logging.Log().With(), args)
+			log.Info().Msg("received ADD")
+			err := me.Add(args)
+			if err != nil {
+				logging.Error(fmt.Sprintf("error invoking CNI ADD for args=%s", args), err)
+			} else {
+				log.Info().Msg("successful ADD")
+			}
+
+			return err
 		},
 		func(args *skel.CmdArgs) error {
-			return me.Check(args)
+			log := argLogContext(logging.Log().With(), args)
+			log.Info().Msg("received CHECK")
+			err := me.Check(args)
+			if err != nil {
+				logging.Error(fmt.Sprintf("error invoking CNI CHECK for args=%s", args), err)
+			} else {
+				log.Info().Msg("successful CHECK")
+			}
+			return err
 		},
 		func(args *skel.CmdArgs) error {
-			return me.Del(args)
+			log := argLogContext(logging.Log().With(), args)
+			log.Info().Msg("received DEL")
+			err := me.Del(args)
+			if err != nil {
+				logging.Error(fmt.Sprintf("error invoking CNI DEL for args=%s", args), err)
+			} else {
+				log.Info().Msg("successful DEL")
+			}
+			return err
 		},
 		cniversion.All,
 		"openstack CNI plugin that plumbs neutron ports into containers")
