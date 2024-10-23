@@ -93,9 +93,8 @@ func (me *TestData) CniResult() *currentcni.Result {
 
 func PortReaperOpts() cniserver.PortReaperOpts {
 	return cniserver.PortReaperOpts{
-		Interval:       time.Second * 300,
-		MinPortAge:     time.Second * 900,
-		MountedProcDir: "/host/proc",
+		Interval:   time.Second * 300,
+		MinPortAge: time.Second * 600,
 	}
 }
 

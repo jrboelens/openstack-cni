@@ -125,7 +125,6 @@ func (me *Builder) Build() (*Deps, error) {
 			Opts: PortReaperOpts{
 				Interval:       me.config.ReapInterval,
 				MinPortAge:     me.config.MinPortAge,
-				MountedProcDir: "/host/proc",
 				SkipDelete:     me.config.SkipReaping,
 			},
 			OsClient: me.osClient,

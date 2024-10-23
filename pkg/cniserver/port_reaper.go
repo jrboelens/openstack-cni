@@ -19,10 +19,9 @@ type PortReaper struct {
 }
 
 type PortReaperOpts struct {
-	Interval       time.Duration
-	MinPortAge     time.Duration
-	MountedProcDir string
-	SkipDelete     bool
+	Interval   time.Duration
+	MinPortAge time.Duration
+	SkipDelete bool
 }
 
 func (me *PortReaper) Start() {
@@ -46,18 +45,6 @@ func (me *PortReaper) Stop() {
 func (me *PortReaper) Reap(hostname string) error {
 	log := Log().With().Str("hostname", hostname).Logger()
 	log.Info().Msg("attempting reaping ports")
-
-	// make sure that /host/proc was mounted
-	exists, err := util.DirExists(me.Opts.MountedProcDir)
-	if err != nil {
-		log.Error().Str("mounted_proc_dir", me.Opts.MountedProcDir).Msg("mounted proc directory doesn't exist")
-		return err
-	}
-	if !exists {
-		log.Warn().Str("dir", me.Opts.MountedProcDir).
-			Msg("skipping port reaping. could not find mounted proc directory")
-		return nil
-	}
 
 	// list all openstack cni ports for the host using tags
 	portTags := NewPortKeyTags()
@@ -123,34 +110,6 @@ func (me *PortReaper) ReapPort(port ports.Port) error {
 	log.Info().Str("port_id", port.ID).Msg("successfully reaped port")
 	me.Metrics.reapSuccessCount.Inc()
 	return nil
-
-	// netNs := ""
-	// for _, tag := range port.Tags {
-	// 	if strings.HasPrefix(tag, "netns=") {
-	// 		netNs = strings.Split(tag, "=")[1]
-	// 	}
-	// }
-	// if netNs == "" {
-	// 	log.Info().Msg("skipping port delete.. failed to find netns tag")
-	// 	return nil
-	// }
-	// netNs = strings.Replace(netNs, "/proc", me.Opts.MountedProcDir, 1)
-
-	// exists, err := util.DirExists(netNs)
-	// if err != nil {
-	// 	log.Info().Str("netns", netNs).Msg("error checking for netns directory existence")
-	// 	return err
-	// }
-	// if !exists {
-	// 	log.Info().Str("port_id", port.ID).Msg("attempting to reap port")
-	// 	if err := me.OsClient.DeletePort(port.ID); err != nil {
-	// 		return err
-	// 	}
-	// 	log.Info().Str("port_id", port.ID).Msg("successfully reaped port")
-	// 	me.Metrics.reapSuccessCount.Inc()
-	// } else {
-	// 	log.Info().Str("netns", netNs).Msg("skipping port delete.. netns directory exists")
-	// }
 }
 
 // Repeat executes the fn function after each duration
