@@ -11,6 +11,7 @@ import (
 	"github.com/jboelensns/openstack-cni/pkg/cniserver"
 	"github.com/jboelensns/openstack-cni/pkg/logging"
 	"github.com/jboelensns/openstack-cni/pkg/util"
+	"github.com/rs/zerolog"
 )
 
 // Cni provides methods with the ability accept CNI spec data, make requests to the openstack-cni-daemon and return the results
@@ -29,7 +30,6 @@ func NewCni(client *cniclient.Client, nw Networking) *Cni {
 
 // Add handles ADD CNI commands
 func (me *Cni) Add(args *skel.CmdArgs) error {
-	logging.Log().Info().Str("container_id", args.ContainerID).Str("ns", args.Netns).Str("iface", args.IfName).Str("args", args.Args).Str("path", args.Path).Msg("received ADD")
 	var netConf types.NetConf
 	if err := util.FromJson(args.StdinData, &netConf); err != nil {
 		return err
@@ -60,7 +60,6 @@ func (me *Cni) Add(args *skel.CmdArgs) error {
 
 // Check handles CHECK CNI commands
 func (me *Cni) Check(args *skel.CmdArgs) error {
-	logging.Log().Info().Str("container_id", args.ContainerID).Str("ns", args.Netns).Str("iface", args.IfName).Str("args", args.Args).Str("path", args.Path).Msg("received CHECK")
 	cmd := cniCommandFromSkelArgs(cniserver.CommandCheck, args)
 	_, err := me.client.HandleResponse(me.client.CniCommand(cmd))
 	return err
@@ -68,33 +67,49 @@ func (me *Cni) Check(args *skel.CmdArgs) error {
 
 // Del handles DEL CNI commands
 func (me *Cni) Del(args *skel.CmdArgs) error {
-	logging.Log().Info().Str("container_id", args.ContainerID).Str("ns", args.Netns).Str("iface", args.IfName).Str("args", args.Args).Str("path", args.Path).Msg("received DEL")
 	cmd := cniCommandFromSkelArgs(cniserver.CommandDel, args)
 	_, err := me.client.HandleResponse(me.client.CniCommand(cmd))
 	return err
+}
+
+func argLogContext(l zerolog.Context, args *skel.CmdArgs) zerolog.Logger {
+	return l.Str("container_id", args.ContainerID).Str("ns", args.Netns).Str("iface", args.IfName).Str("args", args.Args).Str("path", args.Path).Logger()
 }
 
 // Invoke invokes the CNI plugin skeletons using its own methods
 func (me *Cni) Invoke() error {
 	err := skel.PluginMainWithError(
 		func(args *skel.CmdArgs) error {
+			log := argLogContext(logging.Log().With(), args)
+			log.Info().Msg("received ADD")
 			err := me.Add(args)
 			if err != nil {
 				logging.Error(fmt.Sprintf("error invoking CNI ADD for args=%s", args), err)
+			} else {
+				log.Info().Msg("successful ADD")
 			}
+
 			return err
 		},
 		func(args *skel.CmdArgs) error {
+			log := argLogContext(logging.Log().With(), args)
+			log.Info().Msg("received CHECK")
 			err := me.Check(args)
 			if err != nil {
 				logging.Error(fmt.Sprintf("error invoking CNI CHECK for args=%s", args), err)
+			} else {
+				log.Info().Msg("successful CHECK")
 			}
 			return err
 		},
 		func(args *skel.CmdArgs) error {
+			log := argLogContext(logging.Log().With(), args)
+			log.Info().Msg("received DEL")
 			err := me.Del(args)
 			if err != nil {
 				logging.Error(fmt.Sprintf("error invoking CNI DEL for args=%s", args), err)
+			} else {
+				log.Info().Msg("successful DEL")
 			}
 			return err
 		},

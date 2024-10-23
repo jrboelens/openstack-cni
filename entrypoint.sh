@@ -29,12 +29,22 @@ else
     exit 1
 fi
 
+="$HOST_CNI_ETC_DIR/openstack-cni.conf"
 # Write out config that the CNI needs to run in kubelet's context
-if [ "$CNI_API_URL" = "" ]; then
-  CNI_API_URL="http://127.0.0.1:4242"
+if [ -f "$CNI_CONF_FILE" ]; then
+  if [ "$CNI_API_URL" = "" ]; then
+    CNI_API_URL="http://127.0.0.1:4242"
+  fi
+  CNI_LOG_FILENAME="/opt/cni/bin/openstack-cni.log"
+  CNI_LOG_LEVEL="info"
+  echo "Using Api URL $CNI_API_URL"
+  echo "Using log file $CNI_LOG_FILENAME"
+  echo "Using log level $CNI_LOG_LEVEL"
+
+  echo "CNI_API_URL=$CNI_API_URL" > "$CNI_CONF_FILE"
+  echo "CNI_LOG_FILENAME=$CNI_LOG_FILENAME" >> "$CNI_CONF_FILE"
+  echo "CNI_LOG_LEVEL=$CNI_LOG_LEVEL" >> "$CNI_CONF_FILE"
 fi
-echo "Using Api URL $CNI_API_URL"
-echo "CNI_API_URL=$CNI_API_URL" > "$HOST_CNI_ETC_DIR/openstack-cni.conf"
 
 ## disable this after testing
 # allow the binary to be injected from the host's filesystem
