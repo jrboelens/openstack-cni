@@ -16,7 +16,7 @@ clean: ## remove binaries
 
 .PHONY: test
 test: ## run all tests
-	go test -v -shuffle=on ./...
+	go test -p 1 -v -shuffle=on ./...
 
 docker-build:
 	scripts/docker.sh build $(VALUES_FILE)

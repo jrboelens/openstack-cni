@@ -138,10 +138,24 @@ func NewPortTags(cmd util.CniCommand) openstack.NeutronTags {
 	if len(containerId) > 12 {
 		containerId = containerId[0:12]
 	}
+
 	return openstack.NewNeutronTags(
 		fmt.Sprintf("containerid=%s", containerId),
 		fmt.Sprintf("ifname=%s", cmd.IfName),
 		fmt.Sprintf("netns=%s", cmd.Netns),
-		fmt.Sprintf("openstack-cni=true"),
+		fmt.Sprintf(OPENSTACK_CNI_TAG),
+		NewHostTag(),
 	)
+}
+
+func NewHostTag() string {
+	hostname, _ := util.GetHostname()
+	return fmt.Sprintf("host=%s", hostname)
+}
+
+func NewPortKeyTags() []string {
+	return []string{
+		OPENSTACK_CNI_TAG,
+		NewHostTag(),
+	}
 }

@@ -1,6 +1,7 @@
 package logging
 
 import (
+	"io"
 	"sync"
 
 	"github.com/go-chi/httplog"
@@ -10,16 +11,19 @@ import (
 var logger zerolog.Logger
 var locker sync.RWMutex
 
-func SetupLogging(name string, opts httplog.Options) zerolog.Logger {
+func SetupLogging(name string, opts httplog.Options, output io.Writer) zerolog.Logger {
 	locker.Lock()
 	defer locker.Unlock()
 	logger = httplog.NewLogger(name, opts)
+	if output != nil {
+		logger = logger.Output(zerolog.ConsoleWriter{Out: output, TimeFormat: opts.TimeFieldFormat})
+	}
 	return logger
 }
 
 func Log() *zerolog.Logger {
-	locker.RLock()
-	defer locker.RUnlock()
+	locker.Lock()
+	defer locker.Unlock()
 	return &logger
 }
 

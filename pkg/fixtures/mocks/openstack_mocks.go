@@ -52,6 +52,9 @@ var _ openstack.OpenstackClient = &OpenstackClientMock{}
 //			GetPortsByDeviceIdFunc: func(deviceId string) ([]ports.Port, error) {
 //				panic("mock out the GetPortsByDeviceId method")
 //			},
+//			GetPortsByTagsFunc: func(tags []string) ([]ports.Port, error) {
+//				panic("mock out the GetPortsByTags method")
+//			},
 //			GetProjectByNameFunc: func(name string) (*projects.Project, error) {
 //				panic("mock out the GetProjectByName method")
 //			},
@@ -100,6 +103,9 @@ type OpenstackClientMock struct {
 
 	// GetPortsByDeviceIdFunc mocks the GetPortsByDeviceId method.
 	GetPortsByDeviceIdFunc func(deviceId string) ([]ports.Port, error)
+
+	// GetPortsByTagsFunc mocks the GetPortsByTags method.
+	GetPortsByTagsFunc func(tags []string) ([]ports.Port, error)
 
 	// GetProjectByNameFunc mocks the GetProjectByName method.
 	GetProjectByNameFunc func(name string) (*projects.Project, error)
@@ -165,6 +171,11 @@ type OpenstackClientMock struct {
 			// DeviceId is the deviceId argument value.
 			DeviceId string
 		}
+		// GetPortsByTags holds details about calls to the GetPortsByTags method.
+		GetPortsByTags []struct {
+			// Tags is the tags argument value.
+			Tags []string
+		}
 		// GetProjectByName holds details about calls to the GetProjectByName method.
 		GetProjectByName []struct {
 			// Name is the name argument value.
@@ -204,6 +215,7 @@ type OpenstackClientMock struct {
 	lockGetPort                sync.RWMutex
 	lockGetPortByTags          sync.RWMutex
 	lockGetPortsByDeviceId     sync.RWMutex
+	lockGetPortsByTags         sync.RWMutex
 	lockGetProjectByName       sync.RWMutex
 	lockGetSecurityGroupByName sync.RWMutex
 	lockGetServerByName        sync.RWMutex
@@ -499,6 +511,38 @@ func (mock *OpenstackClientMock) GetPortsByDeviceIdCalls() []struct {
 	mock.lockGetPortsByDeviceId.RLock()
 	calls = mock.calls.GetPortsByDeviceId
 	mock.lockGetPortsByDeviceId.RUnlock()
+	return calls
+}
+
+// GetPortsByTags calls GetPortsByTagsFunc.
+func (mock *OpenstackClientMock) GetPortsByTags(tags []string) ([]ports.Port, error) {
+	if mock.GetPortsByTagsFunc == nil {
+		panic("OpenstackClientMock.GetPortsByTagsFunc: method is nil but OpenstackClient.GetPortsByTags was just called")
+	}
+	callInfo := struct {
+		Tags []string
+	}{
+		Tags: tags,
+	}
+	mock.lockGetPortsByTags.Lock()
+	mock.calls.GetPortsByTags = append(mock.calls.GetPortsByTags, callInfo)
+	mock.lockGetPortsByTags.Unlock()
+	return mock.GetPortsByTagsFunc(tags)
+}
+
+// GetPortsByTagsCalls gets all the calls that were made to GetPortsByTags.
+// Check the length with:
+//
+//	len(mockedOpenstackClient.GetPortsByTagsCalls())
+func (mock *OpenstackClientMock) GetPortsByTagsCalls() []struct {
+	Tags []string
+} {
+	var calls []struct {
+		Tags []string
+	}
+	mock.lockGetPortsByTags.RLock()
+	calls = mock.calls.GetPortsByTags
+	mock.lockGetPortsByTags.RUnlock()
 	return calls
 }
 

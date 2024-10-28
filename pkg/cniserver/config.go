@@ -3,6 +3,7 @@ package cniserver
 import (
 	"fmt"
 	"net/url"
+	"strconv"
 	"time"
 
 	"github.com/jboelensns/openstack-cni/pkg/util"
@@ -15,6 +16,7 @@ type Config struct {
 	WriteTimeout time.Duration
 	ReapInterval time.Duration
 	MinPortAge   time.Duration
+	SkipReaping  bool
 }
 
 // NewConfig creates a new default Config
@@ -26,11 +28,12 @@ func NewConfig() Config {
 	}
 
 	return Config{
-		ListenAddr:   fmt.Sprintf(":%s", url.Port()),
+		ListenAddr:   url.Host,
 		ReadTimeout:  getEnvDuration("CNI_READ_TIMEOUT", "10s"),
 		WriteTimeout: getEnvDuration("CNI_WRITE_TIMEOUT", "10s"),
 		ReapInterval: getEnvDuration("CNI_REAP_INTERVAL", "300s"),
 		MinPortAge:   getEnvDuration("CNI_MIN_PORT_AGE", "300s"),
+		SkipReaping:  getEnvBool("CNI_SKIP_REAPING", "false"),
 	}
 }
 
@@ -41,4 +44,13 @@ func getEnvDuration(name, defVal string) time.Duration {
 		panic(fmt.Sprintf("invalid configuration %s=%s err=%s", name, envStr, err))
 	}
 	return duration
+}
+
+func getEnvBool(name, defVal string) bool {
+	envStr := util.Getenv(name, defVal)
+	b, err := strconv.ParseBool(envStr)
+	if err != nil {
+		panic(fmt.Sprintf("invalid configuration %s=%s err=%s", name, envStr, err))
+	}
+	return b
 }

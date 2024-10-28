@@ -10,6 +10,7 @@ import (
 // NetlinkWrapper allows us to test without actually using netlink
 type NetlinkWrapper interface {
 	AddrAdd(link netlink.Link, addr *netlink.Addr) error
+	AddrReplace(link netlink.Link, addr *netlink.Addr) error
 	GetNetNsIdByPath(namespace string) (int, error)
 	GetNetNsIdByPid(pid int) (int, error)
 	LinkByName(ifname string) (netlink.Link, error)
@@ -36,6 +37,10 @@ func (me *netlinkWrapper) GetNetNsIdByPath(namespace string) (int, error) {
 
 func (me *netlinkWrapper) AddrAdd(link netlink.Link, addr *netlink.Addr) error {
 	return netlink.AddrAdd(link, addr)
+}
+
+func (me *netlinkWrapper) AddrReplace(link netlink.Link, addr *netlink.Addr) error {
+	return netlink.AddrReplace(link, addr)
 }
 
 func (me *netlinkWrapper) GetNetNsIdByPid(pid int) (int, error) {
