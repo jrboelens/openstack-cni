@@ -40,7 +40,7 @@ func LoadConfig() (Config, error) {
 		RequestTimeout:    timeout,
 		LogFileName:       util.Getenv("CNI_LOG_FILENAME", ""),
 		LogLevel:          util.Getenv("CNI_LOG_LEVEL", "info"),
-		WaitForUdev:       util.GetenvAsBool("CNI_WAIT_FOR_UDEV", true),
-		WaitForUdevPrefix: util.Getenv("CNI_WAIT_FOR_UDEV_PREFIX", "eth"),
+		WaitForUdev:       util.GetenvAsBool("CNI_WAIT_FOR_UDEV", DefaultCniOpts().WaitForUdev),
+		WaitForUdevPrefix: util.Getenv("CNI_WAIT_FOR_UDEV_PREFIX", DefaultCniOpts().WaitForUdevPrefix),
 	}, nil
 }

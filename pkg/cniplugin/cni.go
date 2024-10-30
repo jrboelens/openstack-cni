@@ -21,7 +21,7 @@ type CniOpts struct {
 
 func DefaultCniOpts() CniOpts {
 	return CniOpts{
-		WaitForUdev:       false,
+		WaitForUdev:       true,
 		WaitForUdevPrefix: "eth",
 	}
 }
@@ -36,7 +36,7 @@ type Cni struct {
 // NewCni returns a new Cni
 func NewCni(client *cniclient.Client, nw Networking, opts CniOpts) *Cni {
 	return &Cni{
-		Opts: opts,
+		Opts:   opts,
 		client: client,
 		nw:     nw,
 	}
