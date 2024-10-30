@@ -126,6 +126,7 @@ func (me *Cni) ConfigureInterface(cmd util.CniCommand, result *currentcni.Result
 
 		if me.Opts.WaitForUdev {
 			if strings.HasPrefix(iface.Name, me.Opts.WaitForUdevPrefix) {
+				logging.Log().Info().Str("name", iface.Name).Str("prefix", me.Opts.WaitForUdevPrefix).Msg("found interface name matching disallowed udev prefix... waiting")
 				time.Sleep(25 * time.Millisecond)
 				continue
 			}
