@@ -3,6 +3,7 @@
 ## 0.0.26 (2024-10-30)
 
 - Interfaces are now referred to by index rather than name in order to avoid udev race conditions
+- Added `WaitForUdev (true)` and `WaitForUdevPrefix (default: 'eth')` configuration
 
 ## 0.0.25 (2024-10-23)
 
