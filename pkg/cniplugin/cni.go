@@ -14,15 +14,29 @@ import (
 	"github.com/rs/zerolog"
 )
 
+type CniOpts struct {
+	WaitForUdev       bool
+	WaitForUdevPrefix string
+}
+
+func DefaultCniOpts() CniOpts {
+	return CniOpts{
+		WaitForUdev:       false,
+		WaitForUdevPrefix: "eth",
+	}
+}
+
 // Cni provides methods with the ability accept CNI spec data, make requests to the openstack-cni-daemon and return the results
 type Cni struct {
+	Opts   CniOpts
 	client *cniclient.Client
 	nw     Networking
 }
 
 // NewCni returns a new Cni
-func NewCni(client *cniclient.Client, nw Networking) *Cni {
+func NewCni(client *cniclient.Client, nw Networking, opts CniOpts) *Cni {
 	return &Cni{
+		Opts: opts,
 		client: client,
 		nw:     nw,
 	}

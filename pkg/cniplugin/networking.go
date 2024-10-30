@@ -3,6 +3,8 @@ package cniplugin
 import (
 	"fmt"
 	"net"
+	"strings"
+	"time"
 
 	currentcni "github.com/containernetworking/cni/pkg/types/040"
 	"github.com/jboelensns/openstack-cni/pkg/logging"
@@ -113,38 +115,53 @@ func (me *networking) Configure(namespace string, iface *NetworkInterface) error
 
 // ConfigureInterface sets up the interfaces with the correct name, network namesapce and ip address
 func (me *Cni) ConfigureInterface(cmd util.CniCommand, result *currentcni.Result) error {
-
 	mac := result.Interfaces[0].Mac
-	ifaceIndex, err := GetIfaceIndexByMac(mac)
-	if err != nil {
+
+	// ensure that if udev rules are in use they have had time to run
+	for {
+		iface, err := GetIfaceByMac(mac)
+		if err != nil {
+			return err
+		}
+
+		if me.Opts.WaitForUdev {
+			if strings.HasPrefix(iface.Name, me.Opts.WaitForUdevPrefix) {
+				time.Sleep(25 * time.Millisecond)
+				continue
+			}
+		}
+
+		// ensure that eth0 is not used
+		if iface.Name == "eth0" {
+			return fmt.Errorf("failed to configure interface. eth0 is an invalid name")
+		}
+
+		netIface := &NetworkInterface{
+			Index:    iface.Index,
+			DestName: result.Interfaces[0].Name,
+			Address:  &result.IPs[0].Address,
+		}
+
+		err = me.nw.Configure(cmd.Netns, netIface)
+		if err != nil {
+			return fmt.Errorf("failed to configure interface %w", err)
+		}
 		return err
 	}
-
-	iface := &NetworkInterface{
-		Index:    ifaceIndex,
-		DestName: result.Interfaces[0].Name,
-		Address:  &result.IPs[0].Address,
-	}
-
-	err = me.nw.Configure(cmd.Netns, iface)
-	if err != nil {
-		return fmt.Errorf("failed to configure interface %w", err)
-	}
-	return err
 }
 
-// GetIfaceIndexByMac returns an interface's index matching the given MAC address
-func GetIfaceIndexByMac(mac string) (int, error) {
+// GetIfaceByMac returns an interface matching the given MAC address
+func GetIfaceByMac(mac string) (*net.Interface, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
-		return 0, fmt.Errorf("error finding interface for mac=%s e=%w", mac, err)
+		return nil, fmt.Errorf("error finding interface for mac=%s e=%w", mac, err)
 	}
 
 	for _, iface := range ifaces {
 		if iface.HardwareAddr.String() == mac {
-			return iface.Index, nil
+			return &iface, nil
 		}
 	}
 
-	return 0, fmt.Errorf("failed to find interface for %s", mac)
+	return nil, fmt.Errorf("failed to find interface for %s", mac)
 }

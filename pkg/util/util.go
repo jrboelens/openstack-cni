@@ -3,6 +3,7 @@ package util
 import (
 	"encoding/json"
 	"os"
+	"strconv"
 )
 
 func FromJson(data []byte, i any) error {
@@ -19,6 +20,15 @@ func Getenv(key, def string) string {
 		return def
 	}
 	return v
+}
+
+func GetenvAsBool(key string, def bool) bool {
+	v := os.Getenv(key)
+	r, err := strconv.ParseBool(v)
+	if err != nil {
+		return false
+	}
+	return r
 }
 
 func fileEntryExists(path string, isDir bool) (bool, error) {

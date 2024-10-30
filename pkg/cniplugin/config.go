@@ -9,10 +9,12 @@ import (
 )
 
 type Config struct {
-	BaseUrl        string
-	RequestTimeout time.Duration
-	LogFileName    string
-	LogLevel       string
+	BaseUrl           string
+	RequestTimeout    time.Duration
+	LogFileName       string
+	LogLevel          string
+	WaitForUdev       bool
+	WaitForUdevPrefix string
 }
 
 func LoadConfig() (Config, error) {
@@ -34,9 +36,11 @@ func LoadConfig() (Config, error) {
 		return config, err
 	}
 	return Config{
-		BaseUrl:        util.Getenv("CNI_API_URL", "http://127.0.0.1:4242"),
-		RequestTimeout: timeout,
-		LogFileName:    util.Getenv("CNI_LOG_FILENAME", ""),
-		LogLevel:       util.Getenv("CNI_LOG_LEVEL", "info"),
+		BaseUrl:           util.Getenv("CNI_API_URL", "http://127.0.0.1:4242"),
+		RequestTimeout:    timeout,
+		LogFileName:       util.Getenv("CNI_LOG_FILENAME", ""),
+		LogLevel:          util.Getenv("CNI_LOG_LEVEL", "info"),
+		WaitForUdev:       util.GetenvAsBool("CNI_WAIT_FOR_UDEV", true),
+		WaitForUdevPrefix: util.Getenv("CNI_WAIT_FOR_UDEV_PREFIX", "eth"),
 	}, nil
 }
