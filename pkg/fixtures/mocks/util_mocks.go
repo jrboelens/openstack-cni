@@ -31,6 +31,9 @@ var _ util.NetlinkWrapper = &NetlinkWrapperMock{}
 //			GetNetNsIdByPidFunc: func(pid int) (int, error) {
 //				panic("mock out the GetNetNsIdByPid method")
 //			},
+//			LinkByIndexFunc: func(index int) (netlink.Link, error) {
+//				panic("mock out the LinkByIndex method")
+//			},
 //			LinkByNameFunc: func(ifname string) (netlink.Link, error) {
 //				panic("mock out the LinkByName method")
 //			},
@@ -64,6 +67,9 @@ type NetlinkWrapperMock struct {
 
 	// GetNetNsIdByPidFunc mocks the GetNetNsIdByPid method.
 	GetNetNsIdByPidFunc func(pid int) (int, error)
+
+	// LinkByIndexFunc mocks the LinkByIndex method.
+	LinkByIndexFunc func(index int) (netlink.Link, error)
 
 	// LinkByNameFunc mocks the LinkByName method.
 	LinkByNameFunc func(ifname string) (netlink.Link, error)
@@ -106,6 +112,11 @@ type NetlinkWrapperMock struct {
 			// Pid is the pid argument value.
 			Pid int
 		}
+		// LinkByIndex holds details about calls to the LinkByIndex method.
+		LinkByIndex []struct {
+			// Index is the index argument value.
+			Index int
+		}
 		// LinkByName holds details about calls to the LinkByName method.
 		LinkByName []struct {
 			// Ifname is the ifname argument value.
@@ -140,6 +151,7 @@ type NetlinkWrapperMock struct {
 	lockAddrReplace      sync.RWMutex
 	lockGetNetNsIdByPath sync.RWMutex
 	lockGetNetNsIdByPid  sync.RWMutex
+	lockLinkByIndex      sync.RWMutex
 	lockLinkByName       sync.RWMutex
 	lockLinkSetDown      sync.RWMutex
 	lockLinkSetName      sync.RWMutex
@@ -280,6 +292,38 @@ func (mock *NetlinkWrapperMock) GetNetNsIdByPidCalls() []struct {
 	mock.lockGetNetNsIdByPid.RLock()
 	calls = mock.calls.GetNetNsIdByPid
 	mock.lockGetNetNsIdByPid.RUnlock()
+	return calls
+}
+
+// LinkByIndex calls LinkByIndexFunc.
+func (mock *NetlinkWrapperMock) LinkByIndex(index int) (netlink.Link, error) {
+	if mock.LinkByIndexFunc == nil {
+		panic("NetlinkWrapperMock.LinkByIndexFunc: method is nil but NetlinkWrapper.LinkByIndex was just called")
+	}
+	callInfo := struct {
+		Index int
+	}{
+		Index: index,
+	}
+	mock.lockLinkByIndex.Lock()
+	mock.calls.LinkByIndex = append(mock.calls.LinkByIndex, callInfo)
+	mock.lockLinkByIndex.Unlock()
+	return mock.LinkByIndexFunc(index)
+}
+
+// LinkByIndexCalls gets all the calls that were made to LinkByIndex.
+// Check the length with:
+//
+//	len(mockedNetlinkWrapper.LinkByIndexCalls())
+func (mock *NetlinkWrapperMock) LinkByIndexCalls() []struct {
+	Index int
+} {
+	var calls []struct {
+		Index int
+	}
+	mock.lockLinkByIndex.RLock()
+	calls = mock.calls.LinkByIndex
+	mock.lockLinkByIndex.RUnlock()
 	return calls
 }
 

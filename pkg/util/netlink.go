@@ -13,6 +13,7 @@ type NetlinkWrapper interface {
 	AddrReplace(link netlink.Link, addr *netlink.Addr) error
 	GetNetNsIdByPath(namespace string) (int, error)
 	GetNetNsIdByPid(pid int) (int, error)
+	LinkByIndex(index int) (netlink.Link, error)
 	LinkByName(ifname string) (netlink.Link, error)
 	LinkSetDown(link netlink.Link) error
 	LinkSetName(link netlink.Link, name string) error
@@ -45,6 +46,10 @@ func (me *netlinkWrapper) AddrReplace(link netlink.Link, addr *netlink.Addr) err
 
 func (me *netlinkWrapper) GetNetNsIdByPid(pid int) (int, error) {
 	return netlink.GetNetNsIdByPid(pid)
+}
+
+func (me *netlinkWrapper) LinkByIndex(index int) (netlink.Link, error) {
+	return netlink.LinkByIndex(index)
 }
 
 func (me *netlinkWrapper) LinkByName(ifname string) (netlink.Link, error) {
