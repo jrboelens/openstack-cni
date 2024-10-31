@@ -102,14 +102,14 @@ func (me *networking) Configure(namespace string, iface *NetworkInterface) error
 	}
 
 	// set the IP on the interface
-	logging.Log().Info().Msg("calling netlink.AddrAdd")
+	logger.Info().Msg("calling netlink.AddrAdd")
 	ipAddr := &netlink.Addr{IPNet: iface.Address, Label: ""}
 	if err := me.nl.AddrReplace(link, ipAddr); err != nil {
 		return fmt.Errorf("netlink failed to AddrReplace ns=%s iface=%s iface_index=%d dest_iface=%s addr=%s e=%w", namespace, linkAttrs.Name, iface.Index, iface.DestName, iface.Address, err)
 	}
 
 	// bring the interface up
-	logging.Log().Info().Msg("calling netlink.LinkSetUp")
+	logger.Info().Msg("calling netlink.LinkSetUp")
 	if err := me.nl.LinkSetUp(link); err != nil {
 		return fmt.Errorf("netlink failed to LinkSetup ns=%s iface=%s iface_index=%d dest_iface=%s addr=%s e=%w", namespace, linkAttrs.Name, iface.Index, iface.DestName, iface.Address, err)
 	}
