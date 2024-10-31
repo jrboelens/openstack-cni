@@ -58,9 +58,10 @@ func (me *App) Run() error {
 	nw := NewNetworking(util.NewNetlinkWrapper())
 	cni := NewCni(client, nw,
 		CniOpts{
-			WaitForUdev:       me.config.WaitForUdev,
-			WaitForUdevPrefix: me.config.WaitForUdevPrefix,
-			WaitForUdevDelay:  me.config.WaitForUdevDelay,
+			WaitForUdev:        me.config.WaitForUdev,
+			WaitForUdevPrefix:  me.config.WaitForUdevPrefix,
+			WaitForUdevDelay:   me.config.WaitForUdevDelay,
+			WaitForUdevTimeout: me.config.WaitForUdevTimeout,
 		})
 	return cni.Invoke()
 }

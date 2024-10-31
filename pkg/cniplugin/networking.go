@@ -120,6 +120,7 @@ func (me *Cni) ConfigureInterface(cmd util.CniCommand, result *currentcni.Result
 	mac := result.Interfaces[0].Mac
 
 	// ensure that if udev rules are in use they have had time to run
+	start := time.Now()
 	for {
 		iface, err := GetIfaceByMac(mac)
 		if err != nil {
@@ -129,6 +130,11 @@ func (me *Cni) ConfigureInterface(cmd util.CniCommand, result *currentcni.Result
 		logger := logging.Log().With().Str("iface", iface.Name).Str("mac", result.Interfaces[0].Mac).Str("prefix", me.Opts.WaitForUdevPrefix).Logger()
 
 		if me.Opts.WaitForUdev {
+			if time.Now().Sub(start) >= me.Opts.WaitForUdevTimeout {
+				logger.Error().Str("timeout", me.Opts.WaitForUdevTimeout.String()).Msg("reached udev wait timeout")
+				return fmt.Errorf("reached udev wait timeout mac=%s", mac)
+			}
+
 			logger.Info().Msg("waiting for interface with valid prefix")
 			if strings.HasPrefix(iface.Name, me.Opts.WaitForUdevPrefix) {
 				logger.Info().Msg("found interface name matching disallowed udev prefix... waiting")

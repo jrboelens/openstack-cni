@@ -19,6 +19,7 @@ type CniOpts struct {
 	WaitForUdev       bool
 	WaitForUdevPrefix string
 	WaitForUdevDelay  time.Duration
+	WaitForUdevTimeout  time.Duration
 }
 
 func DefaultCniOpts() CniOpts {
@@ -26,6 +27,7 @@ func DefaultCniOpts() CniOpts {
 		WaitForUdev:       true,
 		WaitForUdevPrefix: "eth",
 		WaitForUdevDelay:  100 * time.Millisecond,
+		WaitForUdevTimeout:  5000 * time.Millisecond,
 	}
 }
 
