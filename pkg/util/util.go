@@ -24,7 +24,7 @@ func Getenv(key, def string) string {
 
 func GetenvAsBool(key string, def bool) bool {
 	v := os.Getenv(key)
-	if key == "" {
+	if v == "" {
 		return def
 	}
 	r, err := strconv.ParseBool(v)

@@ -127,12 +127,12 @@ func (me *Cni) ConfigureInterface(cmd util.CniCommand, result *currentcni.Result
 			return err
 		}
 
-		logger := logging.Log().With().Str("iface", iface.Name).Str("mac", result.Interfaces[0].Mac).Logger()
+		logger := logging.Log().With().Str("iface", iface.Name).Str("mac", result.Interfaces[0].Mac).Str("prefix", me.Opts.WaitForUdevPrefix).Logger()
 
 		if me.Opts.WaitForUdev {
-			logging.Log().Info().Msg("waiting for udev")
+			logger.Info().Msg("waiting for interface with valid prefix")
 			if strings.HasPrefix(iface.Name, me.Opts.WaitForUdevPrefix) {
-				logger.Info().Str("prefix", me.Opts.WaitForUdevPrefix).Msg("found interface name matching disallowed udev prefix... waiting")
+				logger.Info().Msg("found interface name matching disallowed udev prefix... waiting")
 				time.Sleep(25 * time.Millisecond)
 				continue
 			}
