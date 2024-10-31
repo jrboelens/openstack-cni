@@ -23,9 +23,6 @@ func NewApp(config Config) *App {
 
 // Run starts the cniplugin
 func (me *App) Run() error {
-	podName := os.Getenv("K8S_POD_NAME")
-	name := fmt.Sprintf("openstack-cni (%s)", podName)
-
 	// optionally create a logfile
 	var output io.Writer
 	var err error
@@ -42,7 +39,7 @@ func (me *App) Run() error {
 
 	// setup the logging
 	opts := httplog.Options{LogLevel: me.config.LogLevel}
-	logging.SetupLogging(name, opts, output)
+	logging.SetupLogging("openstack-cni", opts, output)
 
 	clientOpts := &cniclient.ClientOpts{
 		BaseUrl:        me.config.BaseUrl,

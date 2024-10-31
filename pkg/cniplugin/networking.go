@@ -53,7 +53,6 @@ func (me *networking) Configure(namespace string, iface *NetworkInterface) error
 	linkAttrs := link.Attrs()
 	if linkAttrs != nil {
 		logger = logger.With().Str("iface", linkAttrs.Name).
-			Int("index", linkAttrs.Index).
 			Str("mac", linkAttrs.HardwareAddr.String()).Logger()
 		logger.Info().Msg("found link")
 	} else {
