@@ -15,6 +15,7 @@ type Config struct {
 	LogLevel          string
 	WaitForUdev       bool
 	WaitForUdevPrefix string
+	WaitForUdevDelay  time.Duration
 }
 
 func LoadConfig() (Config, error) {
@@ -35,6 +36,11 @@ func LoadConfig() (Config, error) {
 	if err != nil {
 		return config, err
 	}
+
+	waitForUdevDelay, err := time.ParseDuration(fmt.Sprintf("%sms", util.Getenv("CNI_WAIT_FOR_UDEV_DELAY_MS", "100")))
+	if err != nil {
+		return config, err
+	}
 	return Config{
 		BaseUrl:           util.Getenv("CNI_API_URL", "http://127.0.0.1:4242"),
 		RequestTimeout:    timeout,
@@ -42,5 +48,6 @@ func LoadConfig() (Config, error) {
 		LogLevel:          util.Getenv("CNI_LOG_LEVEL", "info"),
 		WaitForUdev:       util.GetenvAsBool("CNI_WAIT_FOR_UDEV", DefaultCniOpts().WaitForUdev),
 		WaitForUdevPrefix: util.Getenv("CNI_WAIT_FOR_UDEV_PREFIX", DefaultCniOpts().WaitForUdevPrefix),
+		WaitForUdevDelay:  waitForUdevDelay,
 	}, nil
 }

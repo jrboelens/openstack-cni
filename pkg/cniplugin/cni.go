@@ -2,6 +2,7 @@ package cniplugin
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
@@ -17,12 +18,14 @@ import (
 type CniOpts struct {
 	WaitForUdev       bool
 	WaitForUdevPrefix string
+	WaitForUdevDelay  time.Duration
 }
 
 func DefaultCniOpts() CniOpts {
 	return CniOpts{
 		WaitForUdev:       true,
 		WaitForUdevPrefix: "eth",
+		WaitForUdevDelay:  100 * time.Millisecond,
 	}
 }
 

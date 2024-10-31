@@ -60,6 +60,7 @@ func (me *App) Run() error {
 		CniOpts{
 			WaitForUdev:       me.config.WaitForUdev,
 			WaitForUdevPrefix: me.config.WaitForUdevPrefix,
+			WaitForUdevDelay:  me.config.WaitForUdevDelay,
 		})
 	return cni.Invoke()
 }
