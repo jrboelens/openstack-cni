@@ -2,6 +2,7 @@ package cniplugin
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/containernetworking/cni/pkg/skel"
 	"github.com/containernetworking/cni/pkg/types"
@@ -14,15 +15,33 @@ import (
 	"github.com/rs/zerolog"
 )
 
+type CniOpts struct {
+	WaitForUdev       bool
+	WaitForUdevPrefix string
+	WaitForUdevDelay  time.Duration
+	WaitForUdevTimeout  time.Duration
+}
+
+func DefaultCniOpts() CniOpts {
+	return CniOpts{
+		WaitForUdev:       true,
+		WaitForUdevPrefix: "eth",
+		WaitForUdevDelay:  100 * time.Millisecond,
+		WaitForUdevTimeout:  5000 * time.Millisecond,
+	}
+}
+
 // Cni provides methods with the ability accept CNI spec data, make requests to the openstack-cni-daemon and return the results
 type Cni struct {
+	Opts   CniOpts
 	client *cniclient.Client
 	nw     Networking
 }
 
 // NewCni returns a new Cni
-func NewCni(client *cniclient.Client, nw Networking) *Cni {
+func NewCni(client *cniclient.Client, nw Networking, opts CniOpts) *Cni {
 	return &Cni{
+		Opts:   opts,
 		client: client,
 		nw:     nw,
 	}

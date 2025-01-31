@@ -45,7 +45,7 @@ func Test_Cni(t *testing.T) {
 
 			args := testData.SkelArgs()
 
-			cni := cniplugin.NewCni(cniclient, networking)
+			cni := cniplugin.NewCni(cniclient, networking, cniplugin.DefaultCniOpts())
 			err := cni.Add(args)
 			Assert(t).That(err, IsNil())
 
@@ -67,11 +67,17 @@ func Test_Cni(t *testing.T) {
 			}
 			args := testData.SkelArgs()
 
-			cni := cniplugin.NewCni(cniclient, networking)
+			cni := cniplugin.NewCni(cniclient, networking, cniplugin.DefaultCniOpts())
 			err := cni.Del(args)
 			Assert(t).That(err, IsNil())
 
 			Assert(t).That(cniHandler.DelCalls(), HasLen(1))
 		})
+	})
+
+	t.Run("waitForUdev defaults to true", func(t *testing.T) {
+		cfg, err := cniplugin.LoadConfig()
+		Assert(t).That(err, IsNil())
+		Assert(t).That(cfg.WaitForUdev, IsTrue())
 	})
 }

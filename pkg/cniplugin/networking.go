@@ -3,6 +3,8 @@ package cniplugin
 import (
 	"fmt"
 	"net"
+	"strings"
+	"time"
 
 	currentcni "github.com/containernetworking/cni/pkg/types/040"
 	"github.com/jboelensns/openstack-cni/pkg/logging"
@@ -13,7 +15,7 @@ import (
 
 // NetworkInterface represents a local network interface (e.g ens3)
 type NetworkInterface struct {
-	Name     string
+	Index    int
 	DestName string
 	Address  *net.IPNet
 }
@@ -36,115 +38,143 @@ func NewNetworking(nl util.NetlinkWrapper) *networking {
 
 // Configure moves an existing network interface into a new network namespace with the provided IP address and name
 func (me *networking) Configure(namespace string, iface *NetworkInterface) error {
+	logger := logging.Log().With().
+		Int("iface_index", iface.Index).
+		Str("namespace", namespace).Str("dest_iface", iface.DestName).
+		Str("addr", iface.Address.IP.String()).Logger()
 
 	// Find the link by interface name
-	logging.Log().Info().Str("iface", iface.Name).Msg("calling netlink.LinkByName")
-	link, err := me.nl.LinkByName(iface.Name)
+	logger.Info().Msg("calling netlink.LinkByIndex")
+	link, err := me.nl.LinkByIndex(iface.Index)
 	if err != nil {
-		return fmt.Errorf("failed to LinkByName ns=%s iface=%s dest_iface=%s addr=%s e=%w", namespace, iface.Name, iface.DestName, iface.Address, err)
+		return fmt.Errorf("failed to LinkByIndex ns=%s iface_index=%d dest_iface=%s addr=%s e=%w", namespace, iface.Index, iface.DestName, iface.Address, err)
 	}
 
 	linkAttrs := link.Attrs()
 	if linkAttrs != nil {
-		logging.Log().Info().Str("type", link.Type()).
-			Str("iface", linkAttrs.Name).
-			Int("index", linkAttrs.Index).
-			Str("mac", linkAttrs.HardwareAddr.String()).
-			Msg("found link")
+		logger = logger.With().Str("iface", linkAttrs.Name).
+			Str("mac", linkAttrs.HardwareAddr.String()).Logger()
+		logger.Info().Msg("found link")
 	} else {
-		logging.Log().Info().Str("type", link.Type()).Str("attrs", "nil").Msg("found link")
+		logger.Info().Str("type", link.Type()).Str("attrs", "nil").Msg("found link")
 	}
 
 	// Find the destination namespace's fd by its path
-	logging.Log().Info().Str("namespace", namespace).Msg("calling netlink.GetNetNsIdByPath")
+	logger.Info().Msg("calling netlink.GetNetNsIdByPath")
 	nsFd, err := me.nl.GetNetNsIdByPath(namespace)
 	if err != nil {
-		return fmt.Errorf("netlink failed to GetNetNsIdByPath ns=%s iface=%s dest_iface=%s addr=%s e=%w", namespace, iface.Name, iface.DestName, iface.Address, err)
+		return fmt.Errorf("netlink failed to GetNetNsIdByPath ns=%s iface=%s iface_index=%d dest_iface=%s addr=%s e=%w", namespace, linkAttrs.Name, iface.Index, iface.DestName, iface.Address, err)
 	}
 
 	// Move the link into the desination namespace
-	logging.Log().Info().Msg("calling netlink.LinkSetNsFd")
+	logger.Info().Msg("calling netlink.LinkSetNsFd")
 	if err := me.nl.LinkSetNsFd(link, nsFd); err != nil {
-		return fmt.Errorf("netlink failed to LinkSetNsFd ns=%s iface=%s dest_iface=%s addr=%s e=%w", namespace, iface.Name, iface.DestName, iface.Address, err)
+		return fmt.Errorf("netlink failed to LinkSetNsFd ns=%s iface=%s iface_index=%d dest_iface=%s addr=%s e=%w", namespace, linkAttrs.Name, iface.Index, iface.DestName, iface.Address, err)
 	}
 
 	// Save our namespace so we can flip back to it once we're done
-	logging.Log().Info().Msg("calling netlink.Get")
+	logger.Info().Msg("calling netlink.Get")
 	oldNs, err := netns.Get()
 	if err != nil {
-		return fmt.Errorf("netlink failed to Get namespace ns=%s iface=%s dest_iface=%s addr=%s e=%w", namespace, iface.Name, iface.DestName, iface.Address, err)
+		return fmt.Errorf("netlink failed to Get namespace ns=%s iface=%s iface_index=%d dest_iface=%s addr=%s e=%w", namespace, linkAttrs.Name, iface.Index, iface.DestName, iface.Address, err)
 	}
 	defer oldNs.Close()
 
 	// set ourselves into the destination namespace
-	logging.Log().Info().Msg("calling netlink.NsHandle")
+	logger.Info().Msg("calling netlink.NsHandle")
 	if err := netns.Set(netns.NsHandle(nsFd)); err != nil {
-		return fmt.Errorf("netlink failed to Set namespace ns=%s iface=%s dest_iface=%s addr=%s e=%w", namespace, iface.Name, iface.DestName, iface.Address, err)
+		return fmt.Errorf("netlink failed to Set namespace ns=%s iface=%s iface_index=%d dest_iface=%s addr=%s e=%w", namespace, linkAttrs.Name, iface.Index, iface.DestName, iface.Address, err)
 	}
 	// when we're done we need to enter our original namespace
 	defer netns.Set(oldNs)
 
 	// bring the interface down before we configure it
-	logging.Log().Info().Msg("calling netlink.LinkSetDown")
+	logger.Info().Msg("calling netlink.LinkSetDown")
 	if err := me.nl.LinkSetDown(link); err != nil {
-		return fmt.Errorf("netlink failed to LinkSetDown ns=%s iface=%s dest_iface=%s addr=%s e=%w", namespace, iface.Name, iface.DestName, iface.Address, err)
+		return fmt.Errorf("netlink failed to LinkSetDown ns=%s iface=%s iface_index=%d dest_iface=%s addr=%s e=%w", namespace, linkAttrs.Name, iface.Index, iface.DestName, iface.Address, err)
 	}
 
 	// set the name of the link
-	logging.Log().Info().Str("dest_iface", iface.DestName).Msg("calling netlink.LinkSetName")
+	logger.Info().Msg("calling netlink.LinkSetName")
 	if err := me.nl.LinkSetName(link, iface.DestName); err != nil {
-		return fmt.Errorf("netlink failed to LinkSetName ns=%s iface=%s dest_iface=%s addr=%s e=%w", namespace, iface.Name, iface.DestName, iface.Address, err)
+		return fmt.Errorf("netlink failed to LinkSetName ns=%s iface=%s iface_index=%d dest_iface=%s addr=%s e=%w", namespace, linkAttrs.Name, iface.Index, iface.DestName, iface.Address, err)
 	}
 
 	// set the IP on the interface
-	logging.Log().Info().Str("addr", iface.Address.IP.String()).Msg("calling netlink.AddrAdd")
+	logger.Info().Msg("calling netlink.AddrAdd")
 	ipAddr := &netlink.Addr{IPNet: iface.Address, Label: ""}
 	if err := me.nl.AddrReplace(link, ipAddr); err != nil {
-		return fmt.Errorf("netlink failed to AddrReplace ns=%s iface=%s dest_iface=%s addr=%s e=%w", namespace, iface.Name, iface.DestName, iface.Address, err)
+		return fmt.Errorf("netlink failed to AddrReplace ns=%s iface=%s iface_index=%d dest_iface=%s addr=%s e=%w", namespace, linkAttrs.Name, iface.Index, iface.DestName, iface.Address, err)
 	}
 
 	// bring the interface up
-	logging.Log().Info().Msg("calling netlink.LinkSetUp")
+	logger.Info().Msg("calling netlink.LinkSetUp")
 	if err := me.nl.LinkSetUp(link); err != nil {
-		return fmt.Errorf("netlink failed to LinkSetup ns=%s iface=%s dest_iface=%s addr=%s e=%w", namespace, iface.Name, iface.DestName, iface.Address, err)
+		return fmt.Errorf("netlink failed to LinkSetup ns=%s iface=%s iface_index=%d dest_iface=%s addr=%s e=%w", namespace, linkAttrs.Name, iface.Index, iface.DestName, iface.Address, err)
 	}
 	return nil
 }
 
 // ConfigureInterface sets up the interfaces with the correct name, network namesapce and ip address
 func (me *Cni) ConfigureInterface(cmd util.CniCommand, result *currentcni.Result) error {
-
 	mac := result.Interfaces[0].Mac
-	ifaceName, err := GetIfaceNameByMac(mac)
-	if err != nil {
+
+	// ensure that if udev rules are in use they have had time to run
+	start := time.Now()
+	for {
+		iface, err := GetIfaceByMac(mac)
+		if err != nil {
+			return err
+		}
+
+		logger := logging.Log().With().Str("iface", iface.Name).Str("mac", result.Interfaces[0].Mac).Str("prefix", me.Opts.WaitForUdevPrefix).Logger()
+
+		if me.Opts.WaitForUdev {
+			if time.Now().Sub(start) >= me.Opts.WaitForUdevTimeout {
+				logger.Error().Str("timeout", me.Opts.WaitForUdevTimeout.String()).Msg("reached udev wait timeout")
+				return fmt.Errorf("reached udev wait timeout mac=%s", mac)
+			}
+
+			logger.Info().Msg("waiting for interface with valid prefix")
+			if strings.HasPrefix(iface.Name, me.Opts.WaitForUdevPrefix) {
+				logger.Info().Msg("found interface name matching disallowed udev prefix... waiting")
+				time.Sleep(me.Opts.WaitForUdevDelay)
+				continue
+			}
+			logger.Info().Msg("found valid interface name")
+		}
+
+		// ensure that eth0 is not used
+		if iface.Name == "eth0" {
+			return fmt.Errorf("failed to configure interface. eth0 is an invalid name")
+		}
+
+		netIface := &NetworkInterface{
+			Index:    iface.Index,
+			DestName: result.Interfaces[0].Name,
+			Address:  &result.IPs[0].Address,
+		}
+
+		err = me.nw.Configure(cmd.Netns, netIface)
+		if err != nil {
+			return fmt.Errorf("failed to configure interface %w", err)
+		}
 		return err
 	}
-
-	iface := &NetworkInterface{
-		Name:     ifaceName,
-		DestName: result.Interfaces[0].Name,
-		Address:  &result.IPs[0].Address,
-	}
-
-	err = me.nw.Configure(cmd.Netns, iface)
-	if err != nil {
-		return fmt.Errorf("failed to configure interface %w", err)
-	}
-	return err
 }
 
-// GetIfaceNameByMac returns the name of an interface matching the given MAC address
-func GetIfaceNameByMac(mac string) (string, error) {
+// GetIfaceByMac returns an interface matching the given MAC address
+func GetIfaceByMac(mac string) (*net.Interface, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
-		return "", fmt.Errorf("error finding interface for mac=%s e=%w", mac, err)
+		return nil, fmt.Errorf("error finding interface for mac=%s e=%w", mac, err)
 	}
 
 	for _, iface := range ifaces {
 		if iface.HardwareAddr.String() == mac {
-			return iface.Name, nil
+			return &iface, nil
 		}
 	}
 
-	return "", fmt.Errorf("failed to find interface for %s", mac)
+	return nil, fmt.Errorf("failed to find interface for %s", mac)
 }
