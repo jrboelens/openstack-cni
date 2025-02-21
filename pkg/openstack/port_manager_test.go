@@ -15,7 +15,6 @@ import (
 func Test_PortManager(t *testing.T) {
 	WithTestConfig(t, func(cfg TestingConfig) {
 		cmd := util.CniCommand{StdinData: []byte("{}")}
-		context := CniContextFromConfig(t, cfg, cmd)
 
 		realClient, err := openstack.NewOpenstackClient()
 		Assert(t).That(err, IsNil())
@@ -23,10 +22,12 @@ func Test_PortManager(t *testing.T) {
 		client := openstack.NewCachedClient(realClient, time.Second*5)
 
 		t.Run("can setup a port and tear it down", func(t *testing.T) {
+			context := CniContextFromConfig(t, cfg, cmd)
 			SetupAndTeardownPort(t, context, client)
 		})
 
 		t.Run("can setup a port with all options and tear it down", func(t *testing.T) {
+			context := CniContextFromConfig(t, cfg, cmd)
 			context.CniConfig.SubnetName = cfg.SubnetName
 			context.CniConfig.PortDescription = "description"
 			f := false
@@ -44,10 +45,27 @@ func Test_PortManager(t *testing.T) {
 
 			SetupAndTeardownPort(t, context, client)
 		})
+
+		t.Run("can setup a port with port security enabled", func(t *testing.T) {
+			context := CniContextFromConfig(t, cfg, cmd)
+			enabled := true
+			context.CniConfig.EnablePortSecurity = &enabled
+			SetupAndTeardownPort(t, context, client)
+		})
+
+		t.Run("can setup a port with port security disabled", func(t *testing.T) {
+			context := CniContextFromConfig(t, cfg, cmd)
+			enabled := false
+			context.CniConfig.EnablePortSecurity = &enabled
+			// Port security cannot be disabled if security groups are provided
+			context.CniConfig.SecurityGroups = nil
+			SetupAndTeardownPort(t, context, client)
+		})
 	})
 }
 
 func SetupAndTeardownPort(t *testing.T, context util.CniContext, client openstack.OpenstackClient) {
+	t.Helper()
 	pm := openstack.NewPortManager(client)
 	opts := openstack.SetupPortOptsFromContext(context)
 	opts.Tags = cniserver.NewPortTags(context.Command)

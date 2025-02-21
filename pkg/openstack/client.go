@@ -8,6 +8,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/attachinterfaces"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/identity/v3/projects"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/portsecurity"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/ports"
@@ -19,7 +20,7 @@ import (
 
 type OpenstackClient interface {
 	AssignPort(portId, serverId string) (*attachinterfaces.Interface, error)
-	CreatePort(opts ports.CreateOpts) (*ports.Port, error)
+	CreatePort(opts ports.CreateOpts, extraOpts *ExtraCreatePortOpts) (*ports.Port, error)
 	DeletePort(portId string) error
 	DetachPort(portId, serverId string) error
 	Clients() *ApiClients
@@ -73,7 +74,18 @@ func (me *openstackClient) Clients() *ApiClients {
 }
 
 // CreatePort creates a neutron port inside of the specified network
-func (me *openstackClient) CreatePort(opts ports.CreateOpts) (*ports.Port, error) {
+func (me *openstackClient) CreatePort(opts ports.CreateOpts, extraOpts *ExtraCreatePortOpts) (*ports.Port, error) {
+	// optionally include port security
+	if extraOpts != nil {
+		if extraOpts.EnablePortSecurity != nil {
+			// See: https://github.com/gophercloud/gophercloud/blob/main/openstack/networking/v2/extensions/portsecurity/doc.go
+			createOpts := portsecurity.PortCreateOptsExt{
+				CreateOptsBuilder:   opts,
+				PortSecurityEnabled: extraOpts.EnablePortSecurity,
+			}
+			return ports.Create(me.clients.NetworkClient, createOpts).Extract()
+		}
+	}
 	return ports.Create(me.clients.NetworkClient, opts).Extract()
 }
 
@@ -266,4 +278,8 @@ type FixedIP struct {
 // this allows for easy exact matching
 func regexName(name string) string {
 	return fmt.Sprintf("^%s$", name)
+}
+
+type ExtraCreatePortOpts struct {
+	EnablePortSecurity *bool `json:"enable_port_security,omitempty"`
 }

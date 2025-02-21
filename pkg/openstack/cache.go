@@ -49,8 +49,8 @@ func (me *CachedClient) Clients() *ApiClients {
 }
 
 // CreatePort creates a neutron port inside of the specified network
-func (me *CachedClient) CreatePort(opts ports.CreateOpts) (*ports.Port, error) {
-	return me.OpenstackClient.CreatePort(opts)
+func (me *CachedClient) CreatePort(opts ports.CreateOpts, extraOpts *ExtraCreatePortOpts) (*ports.Port, error) {
+	return me.OpenstackClient.CreatePort(opts, extraOpts)
 }
 
 // DeletePort deletes the port

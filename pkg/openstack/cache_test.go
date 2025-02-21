@@ -140,7 +140,7 @@ func Test_Cache(t *testing.T) {
 			testPort := &ports.Port{ID: "myId", Tags: []string{"foo=bar", "this=that"}, DeviceID: "deviceId"}
 
 			// mock the creation and returning of a port
-			mock.CreatePortFunc = func(opts ports.CreateOpts) (*ports.Port, error) { return testPort, nil }
+			mock.CreatePortFunc = func(opts ports.CreateOpts, extraOpts *openstack.ExtraCreatePortOpts) (*ports.Port, error) { return testPort, nil }
 			mock.DeletePortFunc = func(portId string) error { return nil }
 			mock.GetPortByTagsFunc = func(tags []string) (*ports.Port, error) { return testPort, nil }
 			mock.GetPortFunc = func(portId string) (*ports.Port, error) { return testPort, nil }

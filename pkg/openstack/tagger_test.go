@@ -112,7 +112,7 @@ func WithPort(t *testing.T, cfg TestingConfig, client openstack.OpenstackClient,
 		Name:       "openstack-cni-unit-test",
 		ProjectID:  project.ID,
 		ValueSpecs: nil,
-	})
+	}, nil)
 	Assert(t).That(err, IsNil())
 
 	defer func() {
