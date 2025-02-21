@@ -31,7 +31,7 @@ var _ openstack.OpenstackClient = &OpenstackClientMock{}
 //			ClientsFunc: func() *openstack.ApiClients {
 //				panic("mock out the Clients method")
 //			},
-//			CreatePortFunc: func(opts ports.CreateOpts) (*ports.Port, error) {
+//			CreatePortFunc: func(opts ports.CreateOpts, extraOpts *openstack.ExtraCreatePortOpts) (*ports.Port, error) {
 //				panic("mock out the CreatePort method")
 //			},
 //			DeletePortFunc: func(portId string) error {
@@ -84,7 +84,7 @@ type OpenstackClientMock struct {
 	ClientsFunc func() *openstack.ApiClients
 
 	// CreatePortFunc mocks the CreatePort method.
-	CreatePortFunc func(opts ports.CreateOpts) (*ports.Port, error)
+	CreatePortFunc func(opts ports.CreateOpts, extraOpts *openstack.ExtraCreatePortOpts) (*ports.Port, error)
 
 	// DeletePortFunc mocks the DeletePort method.
 	DeletePortFunc func(portId string) error
@@ -138,6 +138,8 @@ type OpenstackClientMock struct {
 		CreatePort []struct {
 			// Opts is the opts argument value.
 			Opts ports.CreateOpts
+			// ExtraOpts is the extraOpts argument value.
+			ExtraOpts *openstack.ExtraCreatePortOpts
 		}
 		// DeletePort holds details about calls to the DeletePort method.
 		DeletePort []struct {
@@ -287,19 +289,21 @@ func (mock *OpenstackClientMock) ClientsCalls() []struct {
 }
 
 // CreatePort calls CreatePortFunc.
-func (mock *OpenstackClientMock) CreatePort(opts ports.CreateOpts) (*ports.Port, error) {
+func (mock *OpenstackClientMock) CreatePort(opts ports.CreateOpts, extraOpts *openstack.ExtraCreatePortOpts) (*ports.Port, error) {
 	if mock.CreatePortFunc == nil {
 		panic("OpenstackClientMock.CreatePortFunc: method is nil but OpenstackClient.CreatePort was just called")
 	}
 	callInfo := struct {
-		Opts ports.CreateOpts
+		Opts      ports.CreateOpts
+		ExtraOpts *openstack.ExtraCreatePortOpts
 	}{
-		Opts: opts,
+		Opts:      opts,
+		ExtraOpts: extraOpts,
 	}
 	mock.lockCreatePort.Lock()
 	mock.calls.CreatePort = append(mock.calls.CreatePort, callInfo)
 	mock.lockCreatePort.Unlock()
-	return mock.CreatePortFunc(opts)
+	return mock.CreatePortFunc(opts, extraOpts)
 }
 
 // CreatePortCalls gets all the calls that were made to CreatePort.
@@ -307,10 +311,12 @@ func (mock *OpenstackClientMock) CreatePort(opts ports.CreateOpts) (*ports.Port,
 //
 //	len(mockedOpenstackClient.CreatePortCalls())
 func (mock *OpenstackClientMock) CreatePortCalls() []struct {
-	Opts ports.CreateOpts
+	Opts      ports.CreateOpts
+	ExtraOpts *openstack.ExtraCreatePortOpts
 } {
 	var calls []struct {
-		Opts ports.CreateOpts
+		Opts      ports.CreateOpts
+		ExtraOpts *openstack.ExtraCreatePortOpts
 	}
 	mock.lockCreatePort.RLock()
 	calls = mock.calls.CreatePort

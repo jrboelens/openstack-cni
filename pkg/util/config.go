@@ -87,7 +87,8 @@ func (me CniCommand) ForLog() [][]string {
       "name": "service-ingress",
       "network": "compute-internal",
       "security_groups": ["dp_default", "default"]
-      }'
+      "enable_port_security": true
+    }'
 */
 type CniConfig struct {
 	*types.NetConf
@@ -96,15 +97,16 @@ type CniConfig struct {
 	DeviceId            string        `json:"device_id,omitempty"`
 	DeviceOwner         string        `json:"device_owner,omitempty"`
 	// FixedIPs string `json:"fixed_ips,omitempty"`
-	MacAddress      string             `json:"mac_address,omitempty"`
-	Network         string             `json:"network,omitempty"`
-	PortDescription string             `json:"port_description,omitempty"`
-	PortName        string             `json:"port_name,omitempty"`
-	ProjectName     string             `json:"project_name,omitempty"`
-	SecurityGroups  *[]string          `json:"security_groups,omitempty"`
-	SubnetName      string             `json:"subnet_name,omitempty"`
-	TenantId        string             `json:"tenant_id,omitempty"`
-	ValueSpecs      *map[string]string `json:"value_specs,omitempty"`
+	MacAddress         string             `json:"mac_address,omitempty"`
+	Network            string             `json:"network,omitempty"`
+	PortDescription    string             `json:"port_description,omitempty"`
+	PortName           string             `json:"port_name,omitempty"`
+	ProjectName        string             `json:"project_name,omitempty"`
+	SecurityGroups     *[]string          `json:"security_groups,omitempty"`
+	SubnetName         string             `json:"subnet_name,omitempty"`
+	TenantId           string             `json:"tenant_id,omitempty"`
+	ValueSpecs         *map[string]string `json:"value_specs,omitempty"`
+	EnablePortSecurity *bool              `json:"enable_port_security,omitempty"`
 }
 
 func NewCniConfig(bytes []byte) (CniConfig, error) {
@@ -120,6 +122,11 @@ func NewCniConfig(bytes []byte) (CniConfig, error) {
 	}
 	if conf.DeviceOwner == "" {
 		conf.DeviceOwner = Getenv("CNI_PORT_DEVICE_OWNER", "")
+	}
+	// port security is enabled by default
+	t := true
+	if conf.EnablePortSecurity == nil {
+		conf.EnablePortSecurity = &t
 	}
 
 	return *conf, nil

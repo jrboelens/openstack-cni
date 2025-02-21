@@ -101,7 +101,12 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 	}
 
 	log.Info().Msg("creating port")
-	result.Port, err = me.client.CreatePort(portOpts)
+	// account for non-default port create options
+	extraCreateOpts := ExtraCreatePortOpts{EnablePortSecurity: nil}
+	if opts.EnablePortSecurity != nil {
+		extraCreateOpts.EnablePortSecurity = opts.EnablePortSecurity
+	}
+	result.Port, err = me.client.CreatePort(portOpts, &extraCreateOpts)
 	if err != nil {
 		return result, err
 	}
@@ -230,6 +235,7 @@ type SetupPortOpts struct {
 	Tags                NeutronTags
 	TenantId            string
 	ValueSpecs          *map[string]string
+	EnablePortSecurity  *bool
 }
 
 func SetupPortOptsFromContext(context util.CniContext) SetupPortOpts {
@@ -248,6 +254,7 @@ func SetupPortOptsFromContext(context util.CniContext) SetupPortOpts {
 		SubnetName:          context.CniConfig.SubnetName,
 		TenantId:            context.CniConfig.TenantId,
 		ValueSpecs:          context.CniConfig.ValueSpecs,
+		EnablePortSecurity:  context.CniConfig.EnablePortSecurity,
 	}
 }
 

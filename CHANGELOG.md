@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.0.27 (2025-02-21)
+ - Added `enable_port_security` as an optional cni configuration
+
 ## 0.0.26 (2024-10-30)
 
 - Interfaces are now referred to by index rather than name in order to avoid udev race conditions
