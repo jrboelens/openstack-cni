@@ -97,16 +97,26 @@ type CniConfig struct {
 	DeviceId            string        `json:"device_id,omitempty"`
 	DeviceOwner         string        `json:"device_owner,omitempty"`
 	// FixedIPs string `json:"fixed_ips,omitempty"`
-	MacAddress         string             `json:"mac_address,omitempty"`
-	Network            string             `json:"network,omitempty"`
-	PortDescription    string             `json:"port_description,omitempty"`
-	PortName           string             `json:"port_name,omitempty"`
-	ProjectName        string             `json:"project_name,omitempty"`
-	SecurityGroups     *[]string          `json:"security_groups,omitempty"`
-	SubnetName         string             `json:"subnet_name,omitempty"`
-	TenantId           string             `json:"tenant_id,omitempty"`
-	ValueSpecs         *map[string]string `json:"value_specs,omitempty"`
-	EnablePortSecurity *bool              `json:"enable_port_security,omitempty"`
+	MacAddress      string             `json:"mac_address,omitempty"`
+	Network         string             `json:"network,omitempty"`
+	PortDescription string             `json:"port_description,omitempty"`
+	PortName        string             `json:"port_name,omitempty"`
+	ProjectName     string             `json:"project_name,omitempty"`
+	SecurityGroups  *[]string          `json:"security_groups,omitempty"`
+	SubnetName      string             `json:"subnet_name,omitempty"`
+	TenantId        string             `json:"tenant_id,omitempty"`
+	ValueSpecs      *map[string]string `json:"value_specs,omitempty"`
+	// PortSecurityEnabled toggles port security on a port.
+	PortSecurityEnabled *bool `json:"port_security_enabled,omitempty"`
+	// The ID of the host where the port is allocated.
+	HostID string `json:"binding:host_id,omitempty"`
+	// The virtual network interface card (vNIC) type that is bound to the
+	// neutron port.
+	VNICType string `json:"binding:vnic_type,omitempty"`
+	// A dictionary that enables the application running on the specified
+	// host to pass and receive virtual network interface (VIF) port-specific
+	// information to the plug-in.
+	Profile map[string]interface{} `json:"binding:profile,omitempty"`
 }
 
 func NewCniConfig(bytes []byte) (CniConfig, error) {
@@ -125,8 +135,8 @@ func NewCniConfig(bytes []byte) (CniConfig, error) {
 	}
 	// port security is enabled by default
 	t := true
-	if conf.EnablePortSecurity == nil {
-		conf.EnablePortSecurity = &t
+	if conf.PortSecurityEnabled == nil {
+		conf.PortSecurityEnabled = &t
 	}
 
 	return *conf, nil
