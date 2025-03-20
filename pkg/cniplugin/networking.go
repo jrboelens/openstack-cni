@@ -120,21 +120,32 @@ func (me *Cni) ConfigureInterface(cmd util.CniCommand, result *currentcni.Result
 	mac := result.Interfaces[0].Mac
 
 	// ensure that if udev rules are in use they have had time to run
+	// this accounts accounts for a race condition between nova/neutron creation/attachment and the interface showing up on the host
 	start := time.Now()
 	for {
-		iface, err := GetIfaceByMac(mac)
-		if err != nil {
-			return err
-		}
-
-		logger := logging.Log().With().Str("iface", iface.Name).Str("mac", result.Interfaces[0].Mac).Str("prefix", me.Opts.WaitForUdevPrefix).Logger()
-
+		logger := logging.Log().With().Str("prefix", me.Opts.WaitForUdevPrefix).Logger()
+		// return an error if we've passed our WaitUdevTimeout
 		if me.Opts.WaitForUdev {
 			if time.Now().Sub(start) >= me.Opts.WaitForUdevTimeout {
 				logger.Error().Str("timeout", me.Opts.WaitForUdevTimeout.String()).Msg("reached udev wait timeout")
 				return fmt.Errorf("reached udev wait timeout mac=%s", mac)
 			}
+		}
+		iface, err := GetIfaceByMac(mac)
+		if err != nil {
+			// If we're waiting for udev log an error and retry; otherwise return the error
+			if me.Opts.WaitForUdev {
+				logger.Error().Str("mac", mac).Err(err).Msg("failed to find mac address")
+				time.Sleep(me.Opts.WaitForUdevDelay)
+				continue
+			} else {
+				return err
+			}
+		}
+		logger = logger.With().Str("iface", iface.Name).Str("mac", mac).Logger()
 
+		// test to see if we found a valid prefix
+		if me.Opts.WaitForUdev {
 			logger.Info().Msg("waiting for interface with valid prefix")
 			if strings.HasPrefix(iface.Name, me.Opts.WaitForUdevPrefix) {
 				logger.Info().Msg("found interface name matching disallowed udev prefix... waiting")
