@@ -25,6 +25,7 @@ type NetworkInterface struct {
 // Networking provides the ability to manipulate a network interface
 type Networking interface {
 	Configure(namespace string, iface *NetworkInterface) error
+	GetIfaceByMac(mac string) (*net.Interface, error)
 }
 
 type networking struct {
@@ -115,6 +116,22 @@ func (me *networking) Configure(namespace string, iface *NetworkInterface) error
 	return nil
 }
 
+// GetIfaceByMac returns an interface matching the given MAC address
+func (me *networking) GetIfaceByMac(mac string) (*net.Interface, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return nil, fmt.Errorf("error finding interface for mac=%s e=%w", mac, err)
+	}
+
+	for _, iface := range ifaces {
+		if iface.HardwareAddr.String() == mac {
+			return &iface, nil
+		}
+	}
+
+	return nil, fmt.Errorf("failed to find interface for %s", mac)
+}
+
 // ConfigureInterface sets up the interfaces with the correct name, network namesapce and ip address
 func (me *Cni) ConfigureInterface(cmd util.CniCommand, result *currentcni.Result) error {
 	mac := result.Interfaces[0].Mac
@@ -131,7 +148,7 @@ func (me *Cni) ConfigureInterface(cmd util.CniCommand, result *currentcni.Result
 				return fmt.Errorf("reached udev wait timeout mac=%s", mac)
 			}
 		}
-		iface, err := GetIfaceByMac(mac)
+		iface, err := me.nw.GetIfaceByMac(mac)
 		if err != nil {
 			// If we're waiting for udev log an error and retry; otherwise return the error
 			if me.Opts.WaitForUdev {
@@ -139,7 +156,7 @@ func (me *Cni) ConfigureInterface(cmd util.CniCommand, result *currentcni.Result
 				time.Sleep(me.Opts.WaitForUdevDelay)
 				continue
 			} else {
-				return err
+				return fmt.Errorf("failed to find interface by mac %s %w", mac, err)
 			}
 		}
 		logger = logger.With().Str("iface", iface.Name).Str("mac", mac).Logger()
@@ -172,20 +189,4 @@ func (me *Cni) ConfigureInterface(cmd util.CniCommand, result *currentcni.Result
 		}
 		return err
 	}
-}
-
-// GetIfaceByMac returns an interface matching the given MAC address
-func GetIfaceByMac(mac string) (*net.Interface, error) {
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		return nil, fmt.Errorf("error finding interface for mac=%s e=%w", mac, err)
-	}
-
-	for _, iface := range ifaces {
-		if iface.HardwareAddr.String() == mac {
-			return &iface, nil
-		}
-	}
-
-	return nil, fmt.Errorf("failed to find interface for %s", mac)
 }
