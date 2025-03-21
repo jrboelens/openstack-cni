@@ -5,6 +5,7 @@ package mocks
 
 import (
 	"github.com/jboelensns/openstack-cni/pkg/cniplugin"
+	"net"
 	"sync"
 )
 
@@ -21,6 +22,9 @@ var _ cniplugin.Networking = &NetworkingMock{}
 //			ConfigureFunc: func(namespace string, iface *cniplugin.NetworkInterface) error {
 //				panic("mock out the Configure method")
 //			},
+//			GetIfaceByMacFunc: func(mac string) (*net.Interface, error) {
+//				panic("mock out the GetIfaceByMac method")
+//			},
 //		}
 //
 //		// use mockedNetworking in code that requires cniplugin.Networking
@@ -31,6 +35,9 @@ type NetworkingMock struct {
 	// ConfigureFunc mocks the Configure method.
 	ConfigureFunc func(namespace string, iface *cniplugin.NetworkInterface) error
 
+	// GetIfaceByMacFunc mocks the GetIfaceByMac method.
+	GetIfaceByMacFunc func(mac string) (*net.Interface, error)
+
 	// calls tracks calls to the methods.
 	calls struct {
 		// Configure holds details about calls to the Configure method.
@@ -40,8 +47,14 @@ type NetworkingMock struct {
 			// Iface is the iface argument value.
 			Iface *cniplugin.NetworkInterface
 		}
+		// GetIfaceByMac holds details about calls to the GetIfaceByMac method.
+		GetIfaceByMac []struct {
+			// Mac is the mac argument value.
+			Mac string
+		}
 	}
-	lockConfigure sync.RWMutex
+	lockConfigure     sync.RWMutex
+	lockGetIfaceByMac sync.RWMutex
 }
 
 // Configure calls ConfigureFunc.
@@ -77,5 +90,37 @@ func (mock *NetworkingMock) ConfigureCalls() []struct {
 	mock.lockConfigure.RLock()
 	calls = mock.calls.Configure
 	mock.lockConfigure.RUnlock()
+	return calls
+}
+
+// GetIfaceByMac calls GetIfaceByMacFunc.
+func (mock *NetworkingMock) GetIfaceByMac(mac string) (*net.Interface, error) {
+	if mock.GetIfaceByMacFunc == nil {
+		panic("NetworkingMock.GetIfaceByMacFunc: method is nil but Networking.GetIfaceByMac was just called")
+	}
+	callInfo := struct {
+		Mac string
+	}{
+		Mac: mac,
+	}
+	mock.lockGetIfaceByMac.Lock()
+	mock.calls.GetIfaceByMac = append(mock.calls.GetIfaceByMac, callInfo)
+	mock.lockGetIfaceByMac.Unlock()
+	return mock.GetIfaceByMacFunc(mac)
+}
+
+// GetIfaceByMacCalls gets all the calls that were made to GetIfaceByMac.
+// Check the length with:
+//
+//	len(mockedNetworking.GetIfaceByMacCalls())
+func (mock *NetworkingMock) GetIfaceByMacCalls() []struct {
+	Mac string
+} {
+	var calls []struct {
+		Mac string
+	}
+	mock.lockGetIfaceByMac.RLock()
+	calls = mock.calls.GetIfaceByMac
+	mock.lockGetIfaceByMac.RUnlock()
 	return calls
 }

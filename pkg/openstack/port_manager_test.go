@@ -49,14 +49,14 @@ func Test_PortManager(t *testing.T) {
 		t.Run("can setup a port with port security enabled", func(t *testing.T) {
 			context := CniContextFromConfig(t, cfg, cmd)
 			enabled := true
-			context.CniConfig.EnablePortSecurity = &enabled
+			context.CniConfig.PortSecurityEnabled = &enabled
 			SetupAndTeardownPort(t, context, client)
 		})
 
 		t.Run("can setup a port with port security disabled", func(t *testing.T) {
 			context := CniContextFromConfig(t, cfg, cmd)
 			enabled := false
-			context.CniConfig.EnablePortSecurity = &enabled
+			context.CniConfig.PortSecurityEnabled = &enabled
 			// Port security cannot be disabled if security groups are provided
 			context.CniConfig.SecurityGroups = nil
 			SetupAndTeardownPort(t, context, client)

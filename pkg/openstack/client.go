@@ -8,6 +8,7 @@ import (
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/extensions/attachinterfaces"
 	"github.com/gophercloud/gophercloud/openstack/compute/v2/servers"
 	"github.com/gophercloud/gophercloud/openstack/identity/v3/projects"
+	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/portsbinding"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/portsecurity"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/extensions/security/groups"
 	"github.com/gophercloud/gophercloud/openstack/networking/v2/networks"
@@ -76,17 +77,28 @@ func (me *openstackClient) Clients() *ApiClients {
 // CreatePort creates a neutron port inside of the specified network
 func (me *openstackClient) CreatePort(opts ports.CreateOpts, extraOpts *ExtraCreatePortOpts) (*ports.Port, error) {
 	// optionally include port security
+	var finalOpts ports.CreateOptsBuilder
+	finalOpts = opts
+
 	if extraOpts != nil {
-		if extraOpts.EnablePortSecurity != nil {
-			// See: https://github.com/gophercloud/gophercloud/blob/main/openstack/networking/v2/extensions/portsecurity/doc.go
-			createOpts := portsecurity.PortCreateOptsExt{
-				CreateOptsBuilder:   opts,
-				PortSecurityEnabled: extraOpts.EnablePortSecurity,
+		// See: https://github.com/gophercloud/gophercloud/blob/main/openstack/networking/v2/extensions/portsecurity/doc.go
+		if extraOpts.HasPortSecurity() {
+			finalOpts = portsecurity.PortCreateOptsExt{
+				CreateOptsBuilder:   finalOpts,
+				PortSecurityEnabled: extraOpts.PortSecurityEnabled,
 			}
-			return ports.Create(me.clients.NetworkClient, createOpts).Extract()
 		}
+		// https://github.com/gophercloud/gophercloud/blob/v1/openstack/networking/v2/extensions/portsbinding/doc.go
+		if extraOpts.HasPortBindings() {
+			finalOpts = portsbinding.CreateOptsExt{
+				VNICType: extraOpts.VNICType,
+				HostID:   extraOpts.HostID,
+				Profile:  extraOpts.Profile,
+			}
+		}
+
 	}
-	return ports.Create(me.clients.NetworkClient, opts).Extract()
+	return ports.Create(me.clients.NetworkClient, finalOpts).Extract()
 }
 
 // DeletePort deletes the port
@@ -281,5 +293,26 @@ func regexName(name string) string {
 }
 
 type ExtraCreatePortOpts struct {
-	EnablePortSecurity *bool `json:"enable_port_security,omitempty"`
+	// PortSecurityEnabled toggles port security on a port.
+	PortSecurityEnabled *bool `json:"port_security_enabled,omitempty"`
+
+	// The ID of the host where the port is allocated.
+	HostID string `json:"binding:host_id,omitempty"`
+
+	// The virtual network interface card (vNIC) type that is bound to the
+	// neutron port.
+	VNICType string `json:"binding:vnic_type,omitempty"`
+
+	// A dictionary that enables the application running on the specified
+	// host to pass and receive virtual network interface (VIF) port-specific
+	// information to the plug-in.
+	Profile map[string]interface{} `json:"binding:profile,omitempty"`
+}
+
+func (me *ExtraCreatePortOpts) HasPortSecurity() bool {
+	return me.PortSecurityEnabled != nil
+}
+
+func (me *ExtraCreatePortOpts) HasPortBindings() bool {
+	return me.HostID != "" || me.VNICType != "" || len(me.Profile) > 0
 }

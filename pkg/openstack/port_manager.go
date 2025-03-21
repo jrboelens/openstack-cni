@@ -102,10 +102,7 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 
 	log.Info().Msg("creating port")
 	// account for non-default port create options
-	extraCreateOpts := ExtraCreatePortOpts{EnablePortSecurity: nil}
-	if opts.EnablePortSecurity != nil {
-		extraCreateOpts.EnablePortSecurity = opts.EnablePortSecurity
-	}
+	extraCreateOpts := opts.CreateExtraPortOpts()
 	result.Port, err = me.client.CreatePort(portOpts, &extraCreateOpts)
 	if err != nil {
 		return result, err
@@ -235,7 +232,20 @@ type SetupPortOpts struct {
 	Tags                NeutronTags
 	TenantId            string
 	ValueSpecs          *map[string]string
-	EnablePortSecurity  *bool
+	// extra options
+	PortSecurityEnabled *bool
+	HostID              string
+	VNICType            string
+	Profile             map[string]interface{}
+}
+
+func (me *SetupPortOpts) CreateExtraPortOpts() ExtraCreatePortOpts {
+	return ExtraCreatePortOpts{
+		PortSecurityEnabled: me.PortSecurityEnabled,
+		HostID:              me.HostID,
+		VNICType:            me.VNICType,
+		Profile:             me.Profile,
+	}
 }
 
 func SetupPortOptsFromContext(context util.CniContext) SetupPortOpts {
@@ -254,7 +264,10 @@ func SetupPortOptsFromContext(context util.CniContext) SetupPortOpts {
 		SubnetName:          context.CniConfig.SubnetName,
 		TenantId:            context.CniConfig.TenantId,
 		ValueSpecs:          context.CniConfig.ValueSpecs,
-		EnablePortSecurity:  context.CniConfig.EnablePortSecurity,
+		PortSecurityEnabled: context.CniConfig.PortSecurityEnabled,
+		HostID: context.CniConfig.HostID,
+		VNICType: context.CniConfig.VNICType,
+		Profile: context.CniConfig.Profile,
 	}
 }
 

@@ -25,6 +25,7 @@ type NetworkInterface struct {
 // Networking provides the ability to manipulate a network interface
 type Networking interface {
 	Configure(namespace string, iface *NetworkInterface) error
+	GetIfaceByMac(mac string) (*net.Interface, error)
 }
 
 type networking struct {
@@ -115,26 +116,53 @@ func (me *networking) Configure(namespace string, iface *NetworkInterface) error
 	return nil
 }
 
+// GetIfaceByMac returns an interface matching the given MAC address
+func (me *networking) GetIfaceByMac(mac string) (*net.Interface, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return nil, fmt.Errorf("error finding interface for mac=%s e=%w", mac, err)
+	}
+
+	for _, iface := range ifaces {
+		if iface.HardwareAddr.String() == mac {
+			return &iface, nil
+		}
+	}
+
+	return nil, fmt.Errorf("failed to find interface for %s", mac)
+}
+
 // ConfigureInterface sets up the interfaces with the correct name, network namesapce and ip address
 func (me *Cni) ConfigureInterface(cmd util.CniCommand, result *currentcni.Result) error {
 	mac := result.Interfaces[0].Mac
 
 	// ensure that if udev rules are in use they have had time to run
+	// this accounts accounts for a race condition between nova/neutron creation/attachment and the interface showing up on the host
 	start := time.Now()
 	for {
-		iface, err := GetIfaceByMac(mac)
-		if err != nil {
-			return err
-		}
-
-		logger := logging.Log().With().Str("iface", iface.Name).Str("mac", result.Interfaces[0].Mac).Str("prefix", me.Opts.WaitForUdevPrefix).Logger()
-
+		logger := logging.Log().With().Str("prefix", me.Opts.WaitForUdevPrefix).Logger()
+		// return an error if we've passed our WaitUdevTimeout
 		if me.Opts.WaitForUdev {
 			if time.Now().Sub(start) >= me.Opts.WaitForUdevTimeout {
 				logger.Error().Str("timeout", me.Opts.WaitForUdevTimeout.String()).Msg("reached udev wait timeout")
 				return fmt.Errorf("reached udev wait timeout mac=%s", mac)
 			}
+		}
+		iface, err := me.nw.GetIfaceByMac(mac)
+		if err != nil {
+			// If we're waiting for udev log an error and retry; otherwise return the error
+			if me.Opts.WaitForUdev {
+				logger.Error().Str("mac", mac).Err(err).Msg("failed to find mac address")
+				time.Sleep(me.Opts.WaitForUdevDelay)
+				continue
+			} else {
+				return fmt.Errorf("failed to find interface by mac %s %w", mac, err)
+			}
+		}
+		logger = logger.With().Str("iface", iface.Name).Str("mac", mac).Logger()
 
+		// test to see if we found a valid prefix
+		if me.Opts.WaitForUdev {
 			logger.Info().Msg("waiting for interface with valid prefix")
 			if strings.HasPrefix(iface.Name, me.Opts.WaitForUdevPrefix) {
 				logger.Info().Msg("found interface name matching disallowed udev prefix... waiting")
@@ -161,20 +189,4 @@ func (me *Cni) ConfigureInterface(cmd util.CniCommand, result *currentcni.Result
 		}
 		return err
 	}
-}
-
-// GetIfaceByMac returns an interface matching the given MAC address
-func GetIfaceByMac(mac string) (*net.Interface, error) {
-	ifaces, err := net.Interfaces()
-	if err != nil {
-		return nil, fmt.Errorf("error finding interface for mac=%s e=%w", mac, err)
-	}
-
-	for _, iface := range ifaces {
-		if iface.HardwareAddr.String() == mac {
-			return &iface, nil
-		}
-	}
-
-	return nil, fmt.Errorf("failed to find interface for %s", mac)
 }
