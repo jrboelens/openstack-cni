@@ -24,7 +24,7 @@ type PortManager struct {
 
 // SetupPort creates a new port and assigns it to a server
 func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
-	log := Log().With().Str("command", "ADD").Str("hostname", opts.Hostname).Str("networkName", opts.NetworkName).Str("projectName", opts.ProjectName).Str("portName", opts.PortName).Logger()
+	log := Log().With().Str("command", "ADD").Str("hostname", opts.Hostname).Str("network_name", opts.NetworkName).Str("project_name", opts.ProjectName).Str("port_name", opts.PortName).Logger()
 	result := &SetupPortResult{}
 	var err error
 
@@ -69,7 +69,7 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 		// if security groups were specified, look them up
 		sgIds := make([]string, len(*opts.SecurityGroups), len(*opts.SecurityGroups))
 		for i, sgName := range *opts.SecurityGroups {
-			log.Info().Str("sgName", sgName).Msg("looking up security group")
+			log.Info().Str("sg_name", sgName).Msg("looking up security group")
 			sg, err := me.client.GetSecurityGroupByName(sgName, projectId)
 			if err != nil {
 				return nil, fmt.Errorf("failed to lookup security group named %s", sgName)
@@ -77,7 +77,7 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 			if sg == nil {
 				return result, fmt.Errorf("failed to find security group named %s", sgName)
 			}
-			log.Info().Str("sgName", sgName).Msg("found security group")
+			log.Info().Str("sg_name", sgName).Msg("found security group")
 			sgIds[i] = sg.ID
 		}
 		opts.SecurityGroups = &sgIds
@@ -88,7 +88,7 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 
 	// optionally include the subnet when creating the port
 	if opts.SubnetName != "" {
-		log.Info().Str("subnetName", opts.SubnetName).Str("networkId", portOpts.NetworkID).Msg("looking up subnet")
+		log.Info().Str("subnet_name", opts.SubnetName).Str("network_id", portOpts.NetworkID).Msg("looking up subnet")
 		subnet, err := me.client.GetSubnetByName(opts.SubnetName, portOpts.NetworkID)
 		if err != nil {
 			return result, err
@@ -96,7 +96,7 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 		if subnet == nil {
 			return result, fmt.Errorf("failed to find subnet named %s in network %s", opts.SubnetName, portOpts.NetworkID)
 		}
-		log.Info().Str("subnetName", opts.SubnetName).Str("networkId", portOpts.NetworkID).Msg("found subnet")
+		log.Info().Str("subnet_name", opts.SubnetName).Str("network_id", portOpts.NetworkID).Msg("found subnet")
 		portOpts.FixedIPs = []FixedIP{{SubnetID: subnet.ID}}
 	}
 
@@ -121,7 +121,7 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 	}
 
 	// lookup the subnet that the port came from
-	log.Info().Str("subnetId", result.Port.FixedIPs[0].SubnetID).Msg("looking up subnet by id")
+	log.Info().Str("subnet_id", result.Port.FixedIPs[0].SubnetID).Msg("looking up subnet by id")
 	result.Subnet, err = me.client.GetSubnet(result.Port.FixedIPs[0].SubnetID)
 	if err != nil {
 		return result, err
@@ -133,12 +133,12 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 
 	if !opts.SkipPortAttach {
 		// assign the port to the VM
-		log.Info().Str("portId", result.Port.ID).Str("serverId", result.Server.ID).Msg("assigning port to server")
+		log.Info().Str("port_id", result.Port.ID).Str("server_id", result.Server.ID).Msg("assigning port to server")
 		result.Attachment, err = me.client.AssignPort(result.Port.ID, result.Server.ID)
 		if err != nil {
 			return result, err
 		}
-		log.Info().Str("portId", result.Port.ID).Str("serverId", result.Server.ID).Msg("assigned port to server")
+		log.Info().Str("port_id", result.Port.ID).Str("server_id", result.Server.ID).Msg("assigned port to server")
 	}
 
 	return result, nil

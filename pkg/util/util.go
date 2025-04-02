@@ -37,22 +37,17 @@ func GetenvAsBool(key string, def bool) bool {
 }
 
 func FileExists(path string) (bool, error) {
-	log := Log().With().Str("path", path).Logger()
 	info, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Error().Err(err).Msg("error is not exist in FileExists")
 			return false, nil
 		}
 		if os.IsPermission(err) {
-			log.Error().Err(err).Msg("error is permission FileExists")
 			return true, nil
 		}
-		log.Error().Err(err).Msg("error other FileExists")
 		return false, err
 	}
 	isDir := info.IsDir()
-	log.Info().Bool("is_dir", isDir).Msg("is_dir in FileExists")
 	return !isDir, nil
 }
 
