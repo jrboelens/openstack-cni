@@ -24,11 +24,12 @@ type PortTags struct {
 
 // NewPortTags returns a new PortTags
 func NewPortTags(port ports.Port) PortTags {
+	hostname, _ := util.GetHostname()
 	return PortTags{
 		ContainerId: GetPortTagWithDefault(TAG_CONTAINERID_NAME, "", port.Tags),
 		IfName:      GetPortTagWithDefault(TAG_IFNAME_NAME, "", port.Tags),
 		Netns:       GetPortTagWithDefault(TAG_NETNS_NAME, "", port.Tags),
-		Host:        NewHostTag(),
+		Host:        hostname,
 	}
 }
 
@@ -39,11 +40,12 @@ func NewPortTagsFromCommand(cmd util.CniCommand) PortTags {
 		containerId = containerId[0:12]
 	}
 
+	hostname, _ := util.GetHostname()
 	return PortTags{
 		ContainerId: containerId,
 		IfName:      cmd.IfName,
 		Netns:       cmd.Netns,
-		Host:        NewHostTag(),
+		Host:        hostname,
 	}
 }
 
