@@ -120,6 +120,7 @@ func (me *PortReaper) ReapPort(port ports.Port) error {
 	}
 
 	// ensure the configured proc mount exists
+	log.Info().Str("proc_mount", me.Opts.ProcMount).Msg("checking proc_mount existence")
 	exists, err := util.DirExists(me.Opts.ProcMount)
 	if err != nil {
 		log.Info().AnErr("err", err).Str("proc_mount", me.Opts.ProcMount).Msg("skipping port delete.. error checking if proc_mount exists")
@@ -132,6 +133,7 @@ func (me *PortReaper) ReapPort(port ports.Port) error {
 
 	// ensure we're actually looking at the proc mount by looking for pid #1
 	pid1Path := path.Join(me.Opts.ProcMount, "1")
+	log.Info().Str("pid1_path", pid1Path).Msg("checking pid1_path existence")
 	exists, err = util.DirExists(pid1Path)
 	if err != nil {
 		log.Info().AnErr("err", err).Str("pid1_path", pid1Path).Msg("skipping port delete.. error checking if pid1_path exists")
@@ -144,6 +146,7 @@ func (me *PortReaper) ReapPort(port ports.Port) error {
 
 	// check to see if the network namespace exists in the mounted /host/proc
 	hostNetns := path.Join(me.Opts.ProcMount, hostPid, "net", "ns")
+	log.Info().Str("host_ns", hostNetns).Msg("checking netns existence")
 	exists, err = util.FileExists(hostNetns)
 	if err != nil {
 		log.Info().AnErr("err", err).Str("host_netns", hostNetns).Msg("skipping port delete.. error checking if host netns exists")
