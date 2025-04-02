@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"os"
 	"strconv"
+
+	"github.com/rs/zerolog/log"
 )
 
 func FromJson(data []byte, i any) error {
@@ -38,14 +40,19 @@ func FileExists(path string) (bool, error) {
 	info, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
+			log.Error().Err(err).Str("path", path).Msg("error is not exist in FileExists")
 			return false, nil
 		}
 		if os.IsPermission(err) {
+			log.Error().Err(err).Str("path", path).Msg("error is permission FileExists")
 			return true, nil
 		}
+		log.Error().Err(err).Str("path", path).Msg("error other FileExists")
 		return false, err
 	}
-	return !info.IsDir(), nil
+	isDir := info.IsDir()
+	log.Info().Str("path", path).Bool("is_dir", isDir).Msg("is_dir in FileExists")
+	return !isDir, nil
 }
 
 func DirExists(path string) (bool, error) {
