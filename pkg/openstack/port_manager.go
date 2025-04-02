@@ -186,6 +186,7 @@ func (me *PortManager) TeardownPort(opts TearDownPortOpts) error {
 	if port == nil {
 		return fmt.Errorf("failed to find port by tags %s", opts.Tags)
 	}
+	log = log.With().Str("port_id", port.ID).Logger()
 	log.Info().Msg("found port by tags")
 
 	if !opts.SkipPortDetach {
@@ -198,21 +199,22 @@ func (me *PortManager) TeardownPort(opts TearDownPortOpts) error {
 		if server == nil {
 			return fmt.Errorf("failed to find server by name %s", opts.Hostname)
 		}
+		log = log.With().Str("server_id", server.ID).Logger()
 		log.Info().Msg("found server")
 
-		log.Info().Str("portId", port.ID).Str("serverId", server.ID).Msg("detaching port")
+		log.Info().Msg("detaching port")
 		err = me.client.DetachPort(port.ID, server.ID)
 		if err != nil {
 			return err
 		}
-		log.Info().Str("portId", port.ID).Str("serverId", server.ID).Msg("detached port")
+		log.Info().Msg("detached port")
 	}
 
-	log.Info().Str("portId", port.ID).Msg("deleting port")
+	log.Info().Msg("deleting port")
 	if err := me.client.DeletePort(port.ID); err != nil {
 		return err
 	}
-	log.Info().Str("portId", port.ID).Msg("deleted port")
+	log.Info().Msg("deleted port")
 	return nil
 }
 

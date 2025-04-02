@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/rs/zerolog/log"
+	. "github.com/jboelensns/openstack-cni/pkg/logging"
 )
 
 func FromJson(data []byte, i any) error {
@@ -37,21 +37,22 @@ func GetenvAsBool(key string, def bool) bool {
 }
 
 func FileExists(path string) (bool, error) {
+	log := Log().With().Str("path", path).Logger()
 	info, err := os.Stat(path)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Error().Err(err).Str("path", path).Msg("error is not exist in FileExists")
+			log.Error().Err(err).Msg("error is not exist in FileExists")
 			return false, nil
 		}
 		if os.IsPermission(err) {
-			log.Error().Err(err).Str("path", path).Msg("error is permission FileExists")
+			log.Error().Err(err).Msg("error is permission FileExists")
 			return true, nil
 		}
-		log.Error().Err(err).Str("path", path).Msg("error other FileExists")
+		log.Error().Err(err).Msg("error other FileExists")
 		return false, err
 	}
 	isDir := info.IsDir()
-	log.Info().Str("path", path).Bool("is_dir", isDir).Msg("is_dir in FileExists")
+	log.Info().Bool("is_dir", isDir).Msg("is_dir in FileExists")
 	return !isDir, nil
 }
 

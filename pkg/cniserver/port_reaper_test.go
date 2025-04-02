@@ -107,7 +107,7 @@ func Test_PortReaper(t *testing.T) {
 		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
 			WithPortReaper(t, client, func(reaper *cniserver.PortReaper) {
 				port := DefaultPort()
-				port.Tags = NeutronTagsWithNetns("/bad/1/net/ns")
+				port.Tags = NeutronTagsWithNetns("/bad/1/ns/net")
 				mock.DeletePortFunc = func(portId string) error { return nil }
 				err = reaper.ReapPort(port)
 				Assert(t).That(err, IsNil())
@@ -119,7 +119,7 @@ func Test_PortReaper(t *testing.T) {
 		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
 			WithPortReaper(t, client, func(reaper *cniserver.PortReaper) {
 				port := DefaultPort()
-				port.Tags = NeutronTagsWithNetns("/proc/NOTAPID/net/ns")
+				port.Tags = NeutronTagsWithNetns("/proc/NOTAPID/ns/net")
 				mock.DeletePortFunc = func(portId string) error { return nil }
 				err = reaper.ReapPort(port)
 				Assert(t).That(err, IsNil())

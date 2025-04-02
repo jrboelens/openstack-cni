@@ -145,7 +145,7 @@ func (me *PortReaper) ReapPort(port ports.Port) error {
 	}
 
 	// check to see if the network namespace exists in the mounted /host/proc
-	hostNetns := path.Join(me.Opts.ProcMount, hostPid, "net", "ns")
+	hostNetns := path.Join(me.Opts.ProcMount, hostPid, "ns", "net")
 	log.Info().Str("host_ns", hostNetns).Msg("checking netns existence")
 	exists, err = util.FileExists(hostNetns)
 	if err != nil {
