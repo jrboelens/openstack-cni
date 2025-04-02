@@ -59,7 +59,7 @@ func (me *PortReaper) Reap(hostname string) error {
 	if len(ports) > 0 {
 		log.Info().Int("port_count", len(ports)).Msg("found tagged ports")
 	} else {
-		log.Info().Msg("did not tagged ports")
+		log.Info().Msg("did not find tagged ports")
 	}
 
 	for _, port := range ports {

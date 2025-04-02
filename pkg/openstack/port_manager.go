@@ -107,10 +107,11 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 	if err != nil {
 		return result, err
 	}
+	log = log.With().Str("port_id", result.Port.ID).Logger()
 	log.Info().Msg("created port")
 
 	// add tags to the port
-	log.Info().Msg("adding tags to port")
+	log.Info().Str("tags", opts.Tags.String()).Msg("adding tags to port")
 	if len(opts.Tags.Tags) > 0 {
 		tagger := NewNeutronTagger(me.client.Clients().NetworkClient, Ports)
 		if err := tagger.SetAll(result.Port.ID, opts.Tags); err != nil {
@@ -265,9 +266,9 @@ func SetupPortOptsFromContext(context util.CniContext) SetupPortOpts {
 		TenantId:            context.CniConfig.TenantId,
 		ValueSpecs:          context.CniConfig.ValueSpecs,
 		PortSecurityEnabled: context.CniConfig.PortSecurityEnabled,
-		HostID: context.CniConfig.HostID,
-		VNICType: context.CniConfig.VNICType,
-		Profile: context.CniConfig.Profile,
+		HostID:              context.CniConfig.HostID,
+		VNICType:            context.CniConfig.VNICType,
+		Profile:             context.CniConfig.Profile,
 	}
 }
 
