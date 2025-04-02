@@ -41,7 +41,7 @@ func (me *commandHandler) Add(cmd util.CniCommand) (*currentcni.Result, error) {
 	}
 
 	opts := openstack.SetupPortOptsFromContext(context)
-	opts.Tags = NewPortTags(cmd)
+	opts.Tags = NewPortTagsFromCommand(cmd).NeutronTags()
 	portResult, err := me.pm.SetupPort(opts)
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup port %w", err)
@@ -58,7 +58,7 @@ func (me *commandHandler) Del(cmd util.CniCommand) error {
 		return nil
 	}
 
-	opts := openstack.TearDownPortOpts{Hostname: context.Hostname, Tags: NewPortTags(cmd)}
+	opts := openstack.TearDownPortOpts{Hostname: context.Hostname, Tags: NewPortTagsFromCommand(cmd).NeutronTags()}
 	if err := me.pm.TeardownPort(opts); err != nil {
 		log.Error().Str("hostname", context.Hostname).Str("tags", opts.Tags.String()).AnErr("err", err).Msg("failed to teardown port")
 		return nil
@@ -130,32 +130,4 @@ func NewIpNet(cidr string) net.IPNet {
 		panic(err)
 	}
 	return net.IPNet{IP: theip, Mask: ipnet.Mask}
-}
-
-// NewPortTags creates a NeutronTags including container, interface and namespace data
-func NewPortTags(cmd util.CniCommand) openstack.NeutronTags {
-	containerId := cmd.ContainerID
-	if len(containerId) > 12 {
-		containerId = containerId[0:12]
-	}
-
-	return openstack.NewNeutronTags(
-		fmt.Sprintf("containerid=%s", containerId),
-		fmt.Sprintf("ifname=%s", cmd.IfName),
-		fmt.Sprintf("netns=%s", cmd.Netns),
-		fmt.Sprintf(OPENSTACK_CNI_TAG),
-		NewHostTag(),
-	)
-}
-
-func NewHostTag() string {
-	hostname, _ := util.GetHostname()
-	return fmt.Sprintf("host=%s", hostname)
-}
-
-func NewPortKeyTags() []string {
-	return []string{
-		OPENSTACK_CNI_TAG,
-		NewHostTag(),
-	}
 }

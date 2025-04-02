@@ -96,7 +96,7 @@ func Test_PortReaper(t *testing.T) {
 	t.Run("will reap an old port", func(t *testing.T) {
 		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
 			WithPortReaper(t, client, func(reaper *cniserver.PortReaper) {
-				port := ports.Port{Status: "DOWN", Tags: NeutronTags(), CreatedAt: time.Now().Add(-(time.Second * 6000))}
+				port := ports.Port{Status: "ACTIVE", Tags: NeutronTags(), CreatedAt: time.Now().Add(-(time.Second * 6000))}
 				mock.DeletePortFunc = func(portId string) error { return nil }
 				err = reaper.ReapPort(port)
 				Assert(t).That(err, IsNil())
@@ -104,7 +104,27 @@ func Test_PortReaper(t *testing.T) {
 			})
 		})
 	})
+	t.Run("will not reap a port with an empty netns", func(t *testing.T) {
+		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
+			WithPortReaper(t, client, func(reaper *cniserver.PortReaper) {
+				tags := NeutronTagsWithNetns("")
+				// TODO <.> do setup a valid proc mount otherwise it will short circuit
+				port := ports.Port{Status: "ACTIVE", Tags: tags, CreatedAt: time.Now().Add(-(time.Second * 6000))}
+				mock.DeletePortFunc = func(portId string) error { return nil }
+				err = reaper.ReapPort(port)
+				Assert(t).That(err, IsNil())
+				Assert(t).That(len(mock.DeletePortCalls()), Equals(0))
+			})
+		})
+	})
 }
+
+// TODO <.> Reaper tests
+// * skips port delete when proc mount errors
+// * skips port delete when proc mount doesn't exist
+// * skips port delete without a netns
+// * skips port delete when the netns exists
+// * skips port delete if there's an error looking up the netns
 
 func Test_PortReaperIntegration(t *testing.T) {
 	t.Run("port reaper attempts to delete ports", func(t *testing.T) {
@@ -118,7 +138,7 @@ func Test_PortReaperIntegration(t *testing.T) {
 				WithPortReaperWithNoMinPortAge(t, cachedClient, func(reaper *cniserver.PortReaper) {
 					pm := openstack.NewPortManager(cachedClient)
 					opts := openstack.SetupPortOptsFromContext(context)
-					opts.Tags = cniserver.NewPortTags(context.Command)
+					opts.Tags = cniserver.NewPortTagsFromCommand(context.Command).NeutronTags()
 					opts.SkipPortAttach = true
 
 					_, err := pm.SetupPort(opts)
@@ -149,7 +169,7 @@ func Test_PortReaperIntegration(t *testing.T) {
 				WithPortReaperWithNoMinPortAge(t, cachedClient, func(reaper *cniserver.PortReaper) {
 					pm := openstack.NewPortManager(cachedClient)
 					opts := openstack.SetupPortOptsFromContext(context)
-					opts.Tags = cniserver.NewPortTags(context.Command)
+					opts.Tags = cniserver.NewPortTagsFromCommand(context.Command).NeutronTags()
 					reaper.Opts.SkipDelete = true
 
 					setupResult, err := pm.SetupPort(opts)

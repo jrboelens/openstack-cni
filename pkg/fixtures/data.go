@@ -95,10 +95,25 @@ func PortReaperOpts() cniserver.PortReaperOpts {
 	return cniserver.PortReaperOpts{
 		Interval:   time.Second * 300,
 		MinPortAge: time.Second * 600,
+		ProcMount:  "/host/proc",
 	}
 }
 
 func NeutronTags() []string {
+	return NeutronTagsWithNetns("/proc/1234/ns")
+}
+
+func NeutronTagsWithNetns(netns string) []string {
 	host, _ := util.GetHostname()
-	return []string{"foo=bar", "openstack-cni=true", "netns=/proc/1234/ns", fmt.Sprintf("host=%s", host)}
+	return []string{"foo=bar", "openstack-cni=true", fmt.Sprintf("netns=%s", netns), fmt.Sprintf("host=%s", host)}
+}
+
+func DefaultNeutronTags() cniserver.PortTags {
+	host, _ := util.GetHostname()
+	return cniserver.PortTags{
+		ContainerId: "12345",
+		IfName:      "ens3",
+		Netns:       "/proc/1234/ns",
+		Host:        host,
+	}
 }

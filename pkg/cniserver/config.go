@@ -17,6 +17,7 @@ type Config struct {
 	ReapInterval time.Duration
 	MinPortAge   time.Duration
 	SkipReaping  bool
+	ProcMount    string
 }
 
 // NewConfig creates a new default Config
@@ -34,6 +35,7 @@ func NewConfig() Config {
 		ReapInterval: getEnvDuration("CNI_REAP_INTERVAL", "300s"),
 		MinPortAge:   getEnvDuration("CNI_MIN_PORT_AGE", "300s"),
 		SkipReaping:  getEnvBool("CNI_SKIP_REAPING", "false"),
+		ProcMount:    util.Getenv("CNI_PROC_MOUNT", "/host/proc"),
 	}
 }
 

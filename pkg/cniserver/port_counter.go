@@ -39,14 +39,3 @@ func (me *PortCounter) Count() float64 {
 	Log().Info().Str("hostname", hostname).Float64("count", count).Msg("found ports")
 	return count
 }
-
-const OPENSTACK_CNI_TAG = "openstack-cni=true"
-
-func HasOpenstackCniTag(tags []string) bool {
-	for _, tag := range tags {
-		if tag == OPENSTACK_CNI_TAG {
-			return true
-		}
-	}
-	return false
-}
