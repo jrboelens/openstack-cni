@@ -30,9 +30,12 @@ func Test_PortReaper(t *testing.T) {
 				mock.GetServerByNameFunc = func(name string) (*servers.Server, error) {
 					return &servers.Server{ID: serverId}, nil
 				}
+
 				mock.DeletePortFunc = func(portId string) error { return nil }
 				mock.GetPortsByTagsFunc = func(tags []string) ([]ports.Port, error) {
-					return []ports.Port{{Status: "DOWN", Tags: NeutronTags()}}, nil
+					// The netns needs to be altered so it doesn't match
+					tags = NeutronTagsWithNetns("/proc/0/ns/net")
+					return []ports.Port{{Status: "DOWN", Tags: tags}}, nil
 				}
 
 				WithTempDir(t, func(dir string) {
@@ -72,7 +75,10 @@ func Test_PortReaper(t *testing.T) {
 		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
 			WithPortReaper(t, client, func(reaper *cniserver.PortReaper) {
 				mock.DeletePortFunc = func(portId string) error { return nil }
-				err = reaper.ReapPort(DefaultPort())
+				port := DefaultPort()
+				// The netns needs to be altered so it doesn't match
+				port.Tags = NeutronTagsWithNetns("/proc/0/ns/net")
+				err = reaper.ReapPort(port)
 				Assert(t).That(err, IsNil())
 				Assert(t).That(len(mock.DeletePortCalls()), Equals(1))
 			})

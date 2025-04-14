@@ -4,8 +4,6 @@ import (
 	"encoding/json"
 	"os"
 	"strconv"
-
-	. "github.com/jboelensns/openstack-cni/pkg/logging"
 )
 
 func FromJson(data []byte, i any) error {

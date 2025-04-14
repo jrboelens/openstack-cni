@@ -175,10 +175,15 @@ func Repeat(d time.Duration, fn func()) (closer func()) {
 	go func() {
 		for {
 			select {
-			case <-ticker.C:
-				fn()
 			case <-done:
 				return
+			case <-ticker.C:
+				select {
+				case <-done:
+					return
+				default:
+					fn()
+				}
 			}
 		}
 	}()
