@@ -32,8 +32,8 @@ func NewConfig() Config {
 		ListenAddr:   url.Host,
 		ReadTimeout:  getEnvDuration("CNI_READ_TIMEOUT", "10s"),
 		WriteTimeout: getEnvDuration("CNI_WRITE_TIMEOUT", "10s"),
-		ReapInterval: getEnvDuration("CNI_REAP_INTERVAL", "60s"), // TODO <.> CHANGE THIS BACK
-		MinPortAge:   getEnvDuration("CNI_MIN_PORT_AGE", "90s"),  // TODO <.> CHANGE THIS BACK
+		ReapInterval: getEnvDuration("CNI_REAP_INTERVAL", "300s"),
+		MinPortAge:   getEnvDuration("CNI_MIN_PORT_AGE", "300s"),
 		SkipReaping:  getEnvBool("CNI_SKIP_REAPING", "false"),
 		ProcMount:    util.Getenv("CNI_PROC_MOUNT", "/host/proc"),
 	}
