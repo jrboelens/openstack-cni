@@ -35,6 +35,7 @@ type commandHandler struct {
 }
 
 func (me *commandHandler) Add(cmd util.CniCommand) (*currentcni.Result, error) {
+	log := Log().With().Str("cmd", cmd.String()).Logger()
 	context, err := util.NewCniContext(cmd)
 	if err != nil {
 		return nil, err
@@ -44,6 +45,7 @@ func (me *commandHandler) Add(cmd util.CniCommand) (*currentcni.Result, error) {
 	opts.Tags = NewPortTagsFromCommand(cmd).NeutronTags()
 	portResult, err := me.pm.SetupPort(opts)
 	if err != nil {
+		log.Error().Str("hostname", context.Hostname).Str("tags", opts.Tags.String()).AnErr("err", err).Msg("failed to setup port")
 		return nil, fmt.Errorf("failed to setup port %w", err)
 	}
 

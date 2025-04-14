@@ -2,8 +2,10 @@ package util
 
 import (
 	"encoding/json"
+	"fmt"
 	"os"
 	"strconv"
+	"time"
 )
 
 func FromJson(data []byte, i any) error {
@@ -30,6 +32,19 @@ func GetenvAsBool(key string, def bool) bool {
 	r, err := strconv.ParseBool(v)
 	if err != nil {
 		return false
+	}
+	return r
+}
+
+func GetenvAsDuration(key string, def time.Duration) time.Duration {
+	v := os.Getenv(key)
+	if v == "" {
+		return def
+	}
+
+	r, err := time.ParseDuration(fmt.Sprintf("%sms", v))
+	if err != nil {
+		return def
 	}
 	return r
 }
