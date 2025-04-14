@@ -17,6 +17,7 @@ type Config struct {
 	WaitForUdevPrefix  string
 	WaitForUdevDelay   time.Duration
 	WaitForUdevTimeout time.Duration
+	NetlinkExtAck      bool
 }
 
 func LoadConfig() (Config, error) {
@@ -56,5 +57,6 @@ func LoadConfig() (Config, error) {
 		WaitForUdevPrefix:  util.Getenv("CNI_WAIT_FOR_UDEV_PREFIX", DefaultCniOpts().WaitForUdevPrefix),
 		WaitForUdevDelay:   waitForUdevDelay,
 		WaitForUdevTimeout: waitForUdevTimeout,
+		NetlinkExtAck:      util.GetenvAsBool("CNI_NETLINK_EXT_ACK", DefaultCniOpts().NetlinkExtAck),
 	}, nil
 }

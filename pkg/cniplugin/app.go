@@ -55,13 +55,15 @@ func (me *App) Run() error {
 	}
 
 	// setup and create the plugin
-	nw := NewNetworking(util.NewNetlinkWrapper())
+	nlWrapper := util.NewNetlinkWrapperWithOpts(util.NetLinkWrapperOpts{ErrorMessageReporting: me.config.NetlinkExtAck})
+	nw := NewNetworking(nlWrapper)
 	cni := NewCni(client, nw,
 		CniOpts{
 			WaitForUdev:        me.config.WaitForUdev,
 			WaitForUdevPrefix:  me.config.WaitForUdevPrefix,
 			WaitForUdevDelay:   me.config.WaitForUdevDelay,
 			WaitForUdevTimeout: me.config.WaitForUdevTimeout,
+			NetlinkExtAck:      me.config.NetlinkExtAck,
 		})
 	return cni.Invoke()
 }

@@ -2,10 +2,15 @@ package util
 
 import (
 	"github.com/vishvananda/netlink"
+	"github.com/vishvananda/netlink/nl"
 	"github.com/vishvananda/netns"
 )
 
 //go:generate moq -pkg mocks -out ../fixtures/mocks/util_mocks.go . NetlinkWrapper
+
+type NetLinkWrapperOpts struct {
+	ErrorMessageReporting bool
+}
 
 // NetlinkWrapper allows us to test without actually using netlink
 type NetlinkWrapper interface {
@@ -25,7 +30,20 @@ func NewNetlinkWrapper() *netlinkWrapper {
 	return &netlinkWrapper{}
 }
 
+func NewNetlinkWrapperWithOpts(opts NetLinkWrapperOpts) *netlinkWrapper {
+	w := &netlinkWrapper{}
+	if opts.ErrorMessageReporting {
+		w.ErrorMessageReporting(opts.ErrorMessageReporting)
+	}
+	return w
+}
+
 type netlinkWrapper struct {
+}
+
+// ErrorMessageReporting enables and disables NETLINK_EXT_ACK error reporting
+func (me *netlinkWrapper) ErrorMessageReporting(enable bool) {
+	nl.EnableErrorMessageReporting = enable
 }
 
 func (me *netlinkWrapper) GetNetNsIdByPath(namespace string) (int, error) {
