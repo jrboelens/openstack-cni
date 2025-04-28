@@ -11,6 +11,11 @@
   - `CNI_NETLINK_RETRY_MAX_MS` Max retry duration (default: `5000ms`)
   - `CNI_NETLINK_RETRY_INTERVAL_MS` Retry interval (default: `150ms`)
 
+## 0.0.28 (2025-03-21)
+ - Added portbindings port options
+ -  now retrying mac lookups
+   -added a test for mac address lookup failures
+
 ## 0.0.27 (2025-02-21)
  - Added `enable_port_security` as an optional cni configuration
 
