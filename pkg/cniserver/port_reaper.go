@@ -2,6 +2,8 @@ package cniserver
 
 import (
 	"fmt"
+	"path"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,6 +24,7 @@ type PortReaperOpts struct {
 	Interval   time.Duration
 	MinPortAge time.Duration
 	SkipDelete bool
+	ProcMount  string
 }
 
 func (me *PortReaper) Start() {
@@ -48,15 +51,15 @@ func (me *PortReaper) Reap(hostname string) error {
 
 	// list all openstack cni ports for the host using tags
 	portTags := NewPortKeyTags()
-	log.Info().Str("tags", strings.Join(portTags, ",")).Msg("searching for reapable ports")
+	log.Info().Str("tags", strings.Join(portTags, ",")).Msg("searching for tagged ports")
 	ports, err := me.OsClient.GetPortsByTags(portTags)
 	if err != nil {
 		return err
 	}
 	if len(ports) > 0 {
-		log.Info().Int("port_count", len(ports)).Msg("found repable ports")
+		log.Info().Int("port_count", len(ports)).Msg("found tagged ports")
 	} else {
-		log.Info().Msg("did not find reapable ports")
+		log.Info().Msg("did not find tagged ports")
 	}
 
 	for _, port := range ports {
@@ -91,23 +94,74 @@ func (me *PortReaper) ReapPort(port ports.Port) error {
 		return nil
 	}
 
-	// only delete DOWN ports
-	if port.Status != "DOWN" {
-		log.Info().Msg("skipping port delete.. port status is not DOWN")
+	// grab the netns tag from the port
+	portTags := NewPortTags(port)
+	if portTags.Netns == "" {
+		log.Info().Msg("skipping port delete.. empty netns")
 		return nil
 	}
 
-	// only delete detached ports
-	if port.DeviceID != "" {
-		log.Info().Str("device_id", port.DeviceID).Msg("skipping port delete.. still attached")
+	// validate netns
+	procName := "proc"
+	netns_parts := strings.Split(portTags.Netns, "/")
+	if len(netns_parts) < 5 {
+		log.Info().Str("netns", portTags.Netns).Msg("skipping port delete.. invalid netns")
+		return nil
+	}
+	if netns_parts[1] != procName {
+		log.Info().Str("netns", portTags.Netns).Msg("skipping port delete.. netns is not in /proc")
+		return nil
+	}
+	hostPid := netns_parts[2]
+	_, err := strconv.ParseInt(hostPid, 10, 64)
+	if err != nil {
+		log.Info().Str("netns", portTags.Netns).Str("host_pid", hostPid).Msg("skipping port delete.. netns contains invalid pid")
 		return nil
 	}
 
-	log.Info().Str("port_id", port.ID).Msg("attempting to reap port")
+	// ensure the configured proc mount exists
+	log.Info().Str("proc_mount", me.Opts.ProcMount).Msg("checking proc_mount existence")
+	exists, err := util.DirExists(me.Opts.ProcMount)
+	if err != nil {
+		log.Info().AnErr("err", err).Str("proc_mount", me.Opts.ProcMount).Msg("skipping port delete.. error checking if proc_mount exists")
+		return nil
+	}
+	if !exists {
+		log.Info().Str("proc_mount", me.Opts.ProcMount).Msg("skipping port delete.. proc_mount doesn't exist")
+		return nil
+	}
+
+	// ensure we're actually looking at the proc mount by looking for pid #1
+	pid1Path := path.Join(me.Opts.ProcMount, "1")
+	log.Info().Str("pid1_path", pid1Path).Msg("checking pid1_path existence")
+	exists, err = util.DirExists(pid1Path)
+	if err != nil {
+		log.Info().AnErr("err", err).Str("pid1_path", pid1Path).Msg("skipping port delete.. error checking if pid1_path exists")
+		return nil
+	}
+	if !exists {
+		log.Info().Str("pid1_path", pid1Path).Msg("skipping port delete.. pid1_path doesn't exist")
+		return nil
+	}
+
+	// check to see if the network namespace exists in the mounted /host/proc
+	hostNetns := path.Join(me.Opts.ProcMount, hostPid, "ns", "net")
+	log.Info().Str("host_ns", hostNetns).Msg("checking netns existence")
+	exists, err = util.FileExists(hostNetns)
+	if err != nil {
+		log.Info().AnErr("err", err).Str("host_netns", hostNetns).Msg("skipping port delete.. error checking if host netns exists")
+		return nil
+	}
+	if exists {
+		log.Info().Str("host_ns", hostNetns).Msg("skipping port delete.. host netns exists")
+		return nil
+	}
+
+	log.Info().Msg("attempting to reap port")
 	if err := me.OsClient.DeletePort(port.ID); err != nil {
 		return err
 	}
-	log.Info().Str("port_id", port.ID).Msg("successfully reaped port")
+	log.Info().Msg("successfully reaped port")
 	me.Metrics.reapSuccessCount.Inc()
 	return nil
 }
@@ -121,10 +175,15 @@ func Repeat(d time.Duration, fn func()) (closer func()) {
 	go func() {
 		for {
 			select {
-			case <-ticker.C:
-				fn()
 			case <-done:
 				return
+			case <-ticker.C:
+				select {
+				case <-done:
+					return
+				default:
+					fn()
+				}
 			}
 		}
 	}()

@@ -24,7 +24,7 @@ type PortManager struct {
 
 // SetupPort creates a new port and assigns it to a server
 func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
-	log := Log().With().Str("command", "ADD").Str("hostname", opts.Hostname).Str("networkName", opts.NetworkName).Str("projectName", opts.ProjectName).Str("portName", opts.PortName).Logger()
+	log := Log().With().Str("command", "ADD").Str("hostname", opts.Hostname).Str("network_name", opts.NetworkName).Str("project_name", opts.ProjectName).Str("port_name", opts.PortName).Logger()
 	result := &SetupPortResult{}
 	var err error
 
@@ -69,7 +69,7 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 		// if security groups were specified, look them up
 		sgIds := make([]string, len(*opts.SecurityGroups), len(*opts.SecurityGroups))
 		for i, sgName := range *opts.SecurityGroups {
-			log.Info().Str("sgName", sgName).Msg("looking up security group")
+			log.Info().Str("sg_name", sgName).Msg("looking up security group")
 			sg, err := me.client.GetSecurityGroupByName(sgName, projectId)
 			if err != nil {
 				return nil, fmt.Errorf("failed to lookup security group named %s", sgName)
@@ -77,7 +77,7 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 			if sg == nil {
 				return result, fmt.Errorf("failed to find security group named %s", sgName)
 			}
-			log.Info().Str("sgName", sgName).Msg("found security group")
+			log.Info().Str("sg_name", sgName).Msg("found security group")
 			sgIds[i] = sg.ID
 		}
 		opts.SecurityGroups = &sgIds
@@ -88,7 +88,7 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 
 	// optionally include the subnet when creating the port
 	if opts.SubnetName != "" {
-		log.Info().Str("subnetName", opts.SubnetName).Str("networkId", portOpts.NetworkID).Msg("looking up subnet")
+		log.Info().Str("subnet_name", opts.SubnetName).Str("network_id", portOpts.NetworkID).Msg("looking up subnet")
 		subnet, err := me.client.GetSubnetByName(opts.SubnetName, portOpts.NetworkID)
 		if err != nil {
 			return result, err
@@ -96,7 +96,7 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 		if subnet == nil {
 			return result, fmt.Errorf("failed to find subnet named %s in network %s", opts.SubnetName, portOpts.NetworkID)
 		}
-		log.Info().Str("subnetName", opts.SubnetName).Str("networkId", portOpts.NetworkID).Msg("found subnet")
+		log.Info().Str("subnet_name", opts.SubnetName).Str("network_id", portOpts.NetworkID).Msg("found subnet")
 		portOpts.FixedIPs = []FixedIP{{SubnetID: subnet.ID}}
 	}
 
@@ -107,10 +107,11 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 	if err != nil {
 		return result, err
 	}
+	log = log.With().Str("port_id", result.Port.ID).Logger()
 	log.Info().Msg("created port")
 
 	// add tags to the port
-	log.Info().Msg("adding tags to port")
+	log.Info().Str("tags", opts.Tags.String()).Msg("adding tags to port")
 	if len(opts.Tags.Tags) > 0 {
 		tagger := NewNeutronTagger(me.client.Clients().NetworkClient, Ports)
 		if err := tagger.SetAll(result.Port.ID, opts.Tags); err != nil {
@@ -120,7 +121,7 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 	}
 
 	// lookup the subnet that the port came from
-	log.Info().Str("subnetId", result.Port.FixedIPs[0].SubnetID).Msg("looking up subnet by id")
+	log.Info().Str("subnet_id", result.Port.FixedIPs[0].SubnetID).Msg("looking up subnet by id")
 	result.Subnet, err = me.client.GetSubnet(result.Port.FixedIPs[0].SubnetID)
 	if err != nil {
 		return result, err
@@ -132,12 +133,12 @@ func (me *PortManager) SetupPort(opts SetupPortOpts) (*SetupPortResult, error) {
 
 	if !opts.SkipPortAttach {
 		// assign the port to the VM
-		log.Info().Str("portId", result.Port.ID).Str("serverId", result.Server.ID).Msg("assigning port to server")
+		log.Info().Str("port_id", result.Port.ID).Str("server_id", result.Server.ID).Msg("assigning port to server")
 		result.Attachment, err = me.client.AssignPort(result.Port.ID, result.Server.ID)
 		if err != nil {
 			return result, err
 		}
-		log.Info().Str("portId", result.Port.ID).Str("serverId", result.Server.ID).Msg("assigned port to server")
+		log.Info().Str("port_id", result.Port.ID).Str("server_id", result.Server.ID).Msg("assigned port to server")
 	}
 
 	return result, nil
@@ -185,6 +186,7 @@ func (me *PortManager) TeardownPort(opts TearDownPortOpts) error {
 	if port == nil {
 		return fmt.Errorf("failed to find port by tags %s", opts.Tags)
 	}
+	log = log.With().Str("port_id", port.ID).Logger()
 	log.Info().Msg("found port by tags")
 
 	if !opts.SkipPortDetach {
@@ -197,21 +199,22 @@ func (me *PortManager) TeardownPort(opts TearDownPortOpts) error {
 		if server == nil {
 			return fmt.Errorf("failed to find server by name %s", opts.Hostname)
 		}
+		log = log.With().Str("server_id", server.ID).Logger()
 		log.Info().Msg("found server")
 
-		log.Info().Str("portId", port.ID).Str("serverId", server.ID).Msg("detaching port")
+		log.Info().Msg("detaching port")
 		err = me.client.DetachPort(port.ID, server.ID)
 		if err != nil {
 			return err
 		}
-		log.Info().Str("portId", port.ID).Str("serverId", server.ID).Msg("detached port")
+		log.Info().Msg("detached port")
 	}
 
-	log.Info().Str("portId", port.ID).Msg("deleting port")
+	log.Info().Msg("deleting port")
 	if err := me.client.DeletePort(port.ID); err != nil {
 		return err
 	}
-	log.Info().Str("portId", port.ID).Msg("deleted port")
+	log.Info().Msg("deleted port")
 	return nil
 }
 
@@ -265,9 +268,9 @@ func SetupPortOptsFromContext(context util.CniContext) SetupPortOpts {
 		TenantId:            context.CniConfig.TenantId,
 		ValueSpecs:          context.CniConfig.ValueSpecs,
 		PortSecurityEnabled: context.CniConfig.PortSecurityEnabled,
-		HostID: context.CniConfig.HostID,
-		VNICType: context.CniConfig.VNICType,
-		Profile: context.CniConfig.Profile,
+		HostID:              context.CniConfig.HostID,
+		VNICType:            context.CniConfig.VNICType,
+		Profile:             context.CniConfig.Profile,
 	}
 }
 

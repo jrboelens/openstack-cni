@@ -3,6 +3,7 @@ package fixtures
 import (
 	"fmt"
 	"net"
+	"os"
 	"time"
 
 	"github.com/containernetworking/cni/pkg/skel"
@@ -36,7 +37,7 @@ func (me *TestData) CniCommand() util.CniCommand {
 	return util.CniCommand{
 		Command:     "ADD",
 		ContainerID: "3369ae15e741d31e8616906642c3ca309291e7776e2fff3bb8d379e642e056a8",
-		Netns:       "/proc/4242/net/ns",
+		Netns:       "/proc/4242/ns/net",
 		IfName:      "eth37",
 		Args:        "FOO=BAR",
 		Path:        "/opt/cni/bin:/opt/cni/bin",
@@ -68,7 +69,7 @@ func (me *TestData) CniResult() *currentcni.Result {
 			{
 				Name:    "ens3",
 				Mac:     "02:42:d9:1f:22:9d",
-				Sandbox: "/proc/4237/net/ns"},
+				Sandbox: "/proc/4237/ns/net"},
 		},
 		IPs: []*currentcni.IPConfig{
 			{
@@ -95,10 +96,27 @@ func PortReaperOpts() cniserver.PortReaperOpts {
 	return cniserver.PortReaperOpts{
 		Interval:   time.Second * 300,
 		MinPortAge: time.Second * 600,
+		ProcMount:  "/proc", // we use the real proc in tests because /host/proc won't exist
 	}
 }
 
 func NeutronTags() []string {
+	pid := os.Getpid()
+	return NeutronTagsWithNetns(fmt.Sprintf("/proc/%d/ns/net", pid))
+}
+
+func NeutronTagsWithNetns(netns string) []string {
 	host, _ := util.GetHostname()
-	return []string{"foo=bar", "openstack-cni=true", "netns=/proc/1234/ns", fmt.Sprintf("host=%s", host)}
+	return []string{"foo=bar", "openstack-cni=true", fmt.Sprintf("netns=%s", netns), fmt.Sprintf("host=%s", host)}
+}
+
+func DefaultNeutronTags() cniserver.PortTags {
+	host, _ := util.GetHostname()
+	pid := os.Getpid()
+	return cniserver.PortTags{
+		ContainerId: "12345",
+		IfName:      "ens3",
+		Netns:       fmt.Sprintf("/proc/%d/ns/net", pid),
+		Host:        host,
+	}
 }

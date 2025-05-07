@@ -18,6 +18,11 @@ import (
 func Test_PortReaper(t *testing.T) {
 	hostname, err := os.Hostname()
 	Assert(t).That(err, IsNil())
+
+	DefaultPort := func() ports.Port {
+		return ports.Port{Status: "ACTIVE", Tags: NeutronTags(), CreatedAt: time.Now().Add(-(time.Second * 6000))}
+	}
+
 	t.Run("port reaper attempts to delete ports", func(t *testing.T) {
 		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
 			WithPortReaper(t, client, func(reaper *cniserver.PortReaper) {
@@ -25,9 +30,12 @@ func Test_PortReaper(t *testing.T) {
 				mock.GetServerByNameFunc = func(name string) (*servers.Server, error) {
 					return &servers.Server{ID: serverId}, nil
 				}
+
 				mock.DeletePortFunc = func(portId string) error { return nil }
 				mock.GetPortsByTagsFunc = func(tags []string) ([]ports.Port, error) {
-					return []ports.Port{{Status: "DOWN", Tags: NeutronTags()}}, nil
+					// The netns needs to be altered so it doesn't match
+					tags = NeutronTagsWithNetns("/proc/0/ns/net")
+					return []ports.Port{{Status: "DOWN", Tags: tags}}, nil
 				}
 
 				WithTempDir(t, func(dir string) {
@@ -63,44 +71,65 @@ func Test_PortReaper(t *testing.T) {
 		})
 	})
 
-	t.Run("will not reap a port that is not DOWN", func(t *testing.T) {
-		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
-			WithPortReaper(t, client, func(reaper *cniserver.PortReaper) {
-				mock.GetPortsByTagsFunc = func(tags []string) ([]ports.Port, error) {
-					return []ports.Port{{Status: "ACTIVE", Tags: NeutronTags()}}, nil
-				}
-				WithTempDir(t, func(dir string) {
-					err = reaper.Reap(hostname)
-					Assert(t).That(err, IsNil())
-					Assert(t).That(len(mock.DeletePortCalls()), Equals(0))
-				})
-			})
-		})
-	})
-
-	t.Run("will not reap an attached port", func(t *testing.T) {
-		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
-			WithPortReaper(t, client, func(reaper *cniserver.PortReaper) {
-				mock.GetPortsByTagsFunc = func(tags []string) ([]ports.Port, error) {
-					return []ports.Port{{DeviceID: "SOMEID", Status: "DOWN", Tags: NeutronTags()}}, nil
-				}
-				WithTempDir(t, func(dir string) {
-					err = reaper.Reap(hostname)
-					Assert(t).That(err, IsNil())
-					Assert(t).That(len(mock.DeletePortCalls()), Equals(0))
-				})
-			})
-		})
-	})
-
 	t.Run("will reap an old port", func(t *testing.T) {
 		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
 			WithPortReaper(t, client, func(reaper *cniserver.PortReaper) {
-				port := ports.Port{Status: "DOWN", Tags: NeutronTags(), CreatedAt: time.Now().Add(-(time.Second * 6000))}
 				mock.DeletePortFunc = func(portId string) error { return nil }
+				port := DefaultPort()
+				// The netns needs to be altered so it doesn't match
+				port.Tags = NeutronTagsWithNetns("/proc/0/ns/net")
 				err = reaper.ReapPort(port)
 				Assert(t).That(err, IsNil())
 				Assert(t).That(len(mock.DeletePortCalls()), Equals(1))
+			})
+		})
+	})
+	t.Run("will not reap a port with an empty tag netns", func(t *testing.T) {
+		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
+			WithPortReaper(t, client, func(reaper *cniserver.PortReaper) {
+				port := DefaultPort()
+				port.Tags = NeutronTagsWithNetns("")
+				mock.DeletePortFunc = func(portId string) error { return nil }
+				err = reaper.ReapPort(port)
+				Assert(t).That(err, IsNil())
+				Assert(t).That(len(mock.DeletePortCalls()), Equals(0))
+			})
+		})
+	})
+
+	t.Run("will not reap a port if proc mount doesn't exist", func(t *testing.T) {
+		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
+			WithPortReaper(t, client, func(reaper *cniserver.PortReaper) {
+				reaper.Opts.ProcMount = "/invalid/proc/mount"
+				port := DefaultPort()
+				mock.DeletePortFunc = func(portId string) error { return nil }
+				err = reaper.ReapPort(port)
+				Assert(t).That(err, IsNil())
+				Assert(t).That(len(mock.DeletePortCalls()), Equals(0))
+			})
+		})
+	})
+	t.Run("will not reap a port if netns doesn't start with /proc ", func(t *testing.T) {
+		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
+			WithPortReaper(t, client, func(reaper *cniserver.PortReaper) {
+				port := DefaultPort()
+				port.Tags = NeutronTagsWithNetns("/bad/1/ns/net")
+				mock.DeletePortFunc = func(portId string) error { return nil }
+				err = reaper.ReapPort(port)
+				Assert(t).That(err, IsNil())
+				Assert(t).That(len(mock.DeletePortCalls()), Equals(0))
+			})
+		})
+	})
+	t.Run("will not reap a port if netns doesn't contain a pid ", func(t *testing.T) {
+		WithMockClient(t, func(mock *mocks.OpenstackClientMock, client openstack.OpenstackClient) {
+			WithPortReaper(t, client, func(reaper *cniserver.PortReaper) {
+				port := DefaultPort()
+				port.Tags = NeutronTagsWithNetns("/proc/NOTAPID/ns/net")
+				mock.DeletePortFunc = func(portId string) error { return nil }
+				err = reaper.ReapPort(port)
+				Assert(t).That(err, IsNil())
+				Assert(t).That(len(mock.DeletePortCalls()), Equals(0))
 			})
 		})
 	})
@@ -118,7 +147,7 @@ func Test_PortReaperIntegration(t *testing.T) {
 				WithPortReaperWithNoMinPortAge(t, cachedClient, func(reaper *cniserver.PortReaper) {
 					pm := openstack.NewPortManager(cachedClient)
 					opts := openstack.SetupPortOptsFromContext(context)
-					opts.Tags = cniserver.NewPortTags(context.Command)
+					opts.Tags = cniserver.NewPortTagsFromCommand(context.Command).NeutronTags()
 					opts.SkipPortAttach = true
 
 					_, err := pm.SetupPort(opts)
@@ -149,7 +178,7 @@ func Test_PortReaperIntegration(t *testing.T) {
 				WithPortReaperWithNoMinPortAge(t, cachedClient, func(reaper *cniserver.PortReaper) {
 					pm := openstack.NewPortManager(cachedClient)
 					opts := openstack.SetupPortOptsFromContext(context)
-					opts.Tags = cniserver.NewPortTags(context.Command)
+					opts.Tags = cniserver.NewPortTagsFromCommand(context.Command).NeutronTags()
 					reaper.Opts.SkipDelete = true
 
 					setupResult, err := pm.SetupPort(opts)

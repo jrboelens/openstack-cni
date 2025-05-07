@@ -100,8 +100,13 @@ func WithOpenstackClient(t *testing.T, callback func(client openstack.OpenstackC
 
 func WithPortReaper(t *testing.T, client openstack.OpenstackClient, callback func(reaper *cniserver.PortReaper)) {
 	t.Helper()
+	WithPortReaperWithOpts(t, client, PortReaperOpts(), callback)
+}
+
+func WithPortReaperWithOpts(t *testing.T, client openstack.OpenstackClient, opts cniserver.PortReaperOpts, callback func(reaper *cniserver.PortReaper)) {
+	t.Helper()
 	reaper := &cniserver.PortReaper{
-		Opts:     PortReaperOpts(),
+		Opts:     opts,
 		OsClient: client,
 		Metrics:  Metrics(),
 	}

@@ -55,7 +55,17 @@ func (me *App) Run() error {
 	}
 
 	// setup and create the plugin
-	nw := NewNetworking(util.NewNetlinkWrapper())
+	var wrapper util.NetlinkWrapper
+	wrapper = util.NewNetlinkWrapperWithOpts(util.NetLinkWrapperOpts{ErrorMessageReporting: me.config.EnableNetlinkExtAck})
+	// optionally use the retry wrapper
+	if me.config.EnableNetlinkRetry {
+		logging.Log().Info().Msg("netlink retry = enabled")
+		retryOpts := util.RetryOpts{}
+		wrapper = util.NewNetlinkWithRetry(wrapper, retryOpts)
+	} else {
+		logging.Log().Info().Msg("netlink retry = disabled")
+	}
+	nw := NewNetworking(wrapper)
 	cni := NewCni(client, nw,
 		CniOpts{
 			WaitForUdev:        me.config.WaitForUdev,

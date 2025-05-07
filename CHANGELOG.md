@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.0.29 (2025-04-14)
+- Reworked the reaper to delete ports that have no associated network namespaces
+- Updated Ticker to allow for earlier exits
+- Improved Logging
+- New CNI Configuration
+  - `CNI_PROC_MOUNT` (default: `/host/proc`)
+  - `CNI_ENABLE_NETLINK_EXT_ACK` Enable extended netlink logging (default: `false`)
+  - `CNI_ENABLE_NETLINK_RETRY` Enable netlink retries using exponential backoff (default: `false`)
+  - `CNI_NETLINK_RETRY_MAX_MS` Max retry duration (default: `5000ms`)
+  - `CNI_NETLINK_RETRY_INTERVAL_MS` Retry interval (default: `150ms`)
+
 ## 0.0.28 (2025-03-21)
  - Added portbindings port options
  -  now retrying mac lookups
